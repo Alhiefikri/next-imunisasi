@@ -13,7 +13,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import Link from "next/link";
 import { LayoutDashboard, LogOut } from "lucide-react";
 
-export default function NavMenu() {
+export default function NavMenu({
+  userName,
+  userImage,
+}: {
+  userName?: string;
+  userImage?: string;
+}) {
   const isMobile = useIsMobile();
   return (
     <NavigationMenu viewport={isMobile} className="mx-auto max-w-full my-5">
@@ -28,8 +34,8 @@ export default function NavMenu() {
           <NavigationMenuItem className="hidden md:block">
             <NavigationMenuTrigger>
               <Avatar>
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>CN</AvatarFallback>
+                <AvatarImage src={userImage} />
+                <AvatarFallback>{userName}</AvatarFallback>
               </Avatar>
             </NavigationMenuTrigger>
             <NavigationMenuContent>
