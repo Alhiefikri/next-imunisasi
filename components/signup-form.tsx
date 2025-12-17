@@ -19,6 +19,8 @@ import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 import Link from "next/link";
 import { Separator } from "./ui/separator";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const signUpFormSchema = z
   .object({
@@ -46,6 +48,40 @@ export default function SignUpForm() {
       confirmPassword: "",
     },
   });
+
+  const onSubmit = async (values: SignUpFormValues) => {
+    try {
+      setIsloading(true);
+      await authClient.signUp.email(
+        {
+          name: values.email,
+          email: values.email,
+          password: values.password,
+          callbackURL: "/",
+        },
+        {
+          onSuccess: () => {
+            router.push("/");
+          },
+          onError: (ctx) => {
+            toast.error(ctx.error.message);
+          },
+        }
+      );
+    } catch (error) {
+      console.error({ error });
+    } finally {
+      setIsloading(false);
+    }
+  };
+
+  const SignWithGoogle = async () => {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/",
+    });
+  };
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
@@ -53,7 +89,10 @@ export default function SignUpForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form className="flex flex-col gap-6">
+          <form
+            className="flex flex-col gap-6"
+            onSubmit={form.handleSubmit(onSubmit)}
+          >
             <FormField
               control={form.control}
               name="email"
@@ -113,7 +152,11 @@ export default function SignUpForm() {
             </p>
 
             <Separator />
-            <Button type="button" className="text-[13px] cursor-pointer">
+            <Button
+              type="button"
+              className="text-[13px] cursor-pointer"
+              onClick={SignWithGoogle}
+            >
               Continue with Google
             </Button>
           </form>

@@ -19,6 +19,8 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "./ui/spinner";
 import Link from "next/link";
 import { Separator } from "./ui/separator";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const signInFormSchema = z.object({
   email: z.email({ message: "Invalid email address" }),
@@ -40,6 +42,38 @@ export default function SignForm() {
     },
   });
 
+  const onSubmit = async (values: SignInFormValues) => {
+    try {
+      setIsLoading(true);
+      await authClient.signIn.email(
+        {
+          email: values.email,
+          password: values.password,
+          callbackURL: "/",
+        },
+        {
+          onSuccess: () => {
+            router.push("/");
+          },
+          onError: (ctx) => {
+            toast.error(ctx.error.message);
+          },
+        }
+      );
+    } catch (error) {
+      console.error({ error });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/",
+    });
+  };
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
@@ -47,7 +81,10 @@ export default function SignForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form className="flex flex-col gap-6">
+          <form
+            className="flex flex-col gap-6"
+            onSubmit={form.handleSubmit(onSubmit)}
+          >
             <FormField
               control={form.control}
               name="email"
