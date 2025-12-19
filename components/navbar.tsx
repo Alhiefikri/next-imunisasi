@@ -39,7 +39,7 @@ export default function NavMenu({
               </Avatar>
             </NavigationMenuTrigger>
             <NavigationMenuContent>
-              <ul className="grid w-[200px] gap-4">
+              <ul className="grid w-50 gap-4">
                 <li>
                   <NavigationMenuLink asChild>
                     <Link
