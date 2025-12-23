@@ -87,7 +87,7 @@ export const columns: ColumnDef<Patient>[] = [
     id: "location",
     header: "Domisili",
     cell: ({ row }) => (
-      <div className="flex flex-col text-xs max-w-[150px]">
+      <div className="flex flex-col text-xs max-w-37.5">
         <span className="font-medium truncate uppercase">
           {row.original.villageName || "-"}
         </span>

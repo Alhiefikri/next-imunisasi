@@ -16,7 +16,11 @@ export const PatientformSchema = z.object({
   birthDate: z.date(),
   gender: z.enum(["LAKI_LAKI", "PEREMPUAN"]),
   placeOfBirth: z.string().max(100, "Tempat lahir maksimal 100 karakter."),
-  parentName: z.string().max(100, "Nama orang tua/wali maksimal 100 karakter."),
+  parentName: z
+    .string()
+    .min(2, "Nama harus minimal 2 karakter.")
+    .max(100, "Nama maksimal 100 karakter.")
+    .trim(),
   phoneNumber: z
     .string()
     .max(15, "Nomor telepon maksimal 15 karakter.")
@@ -30,4 +34,9 @@ export const PatientformSchema = z.object({
   address: z.string().trim().optional(),
 });
 
+export const VaccineFormSchema = z.object({
+  name: z.string().min(2, "Nama vaksin harus minimal 2 karakter."),
+  description: z.string().optional(),
+});
 export type PatientFormValues = z.infer<typeof PatientformSchema>;
+export type VaccineFormValues = z.infer<typeof VaccineFormSchema>;

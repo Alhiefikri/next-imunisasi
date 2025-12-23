@@ -121,12 +121,62 @@ model Patient {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // =====================
-  // INDEXING (WAJIB)
-  // =====================
+
   @@index([name])
   @@index([parentName])
   @@index([phoneNumber])
   @@index([districtId, villageId])
 }
 
+model Vaccine {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  schedules   Schedule[] // Relasi ke jadwal
+
+createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Master Data Lokasi Posyandu
+model Posyandu {
+  id          String     @id @default(cuid())
+  name        String
+  address     String
+  districtId  String     // Untuk filtering otomatis berdasarkan wilayah
+  villageId   String     // Agar anak di kelurahan ini otomatis masuk list
+  villageName String?
+  schedules   Schedule[]
+
+    createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Model Jadwal (Penghubung)
+model Schedule {
+  id           String   @id @default(cuid())
+  date         DateTime
+  startTime    String?  // Misal "08:00"
+  endTime      String?  // Misal "11:00"
+  
+  // Relasi ke Master Data
+  vaccineId    String
+  vaccine      Vaccine  @relation(fields: [vaccineId], references: [id])
+  
+  posyanduId   String
+  posyandu     Posyandu @relation(fields: [posyanduId], references: [id])
+
+  status       ScheduleStatus @default(UPCOMING) // UPCOMING, ONGOING, COMPLETED, CANCELLED
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([date])
+}
+
+enum ScheduleStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
