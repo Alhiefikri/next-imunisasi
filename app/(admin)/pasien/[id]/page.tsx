@@ -47,6 +47,14 @@ export default async function PatientPage({
             nik={patient.nik ?? ""}
             birthDate={patient.birthDate}
             gender={patient.gender}
+            placeOfBirth={patient.placeOfBirth ?? ""}
+            parentName={patient.parentName}
+            phoneNumber={patient.phoneNumber ?? ""}
+            districtId={patient.districtId ?? ""}
+            villageId={patient.villageId ?? ""}
+            districtName={patient.districtName ?? ""}
+            villageName={patient.villageName ?? ""}
+            address={patient.address ?? ""}
           />
         ) : (
           <PatientForm
@@ -55,6 +63,14 @@ export default async function PatientPage({
             nik=""
             birthDate={undefined}
             gender={undefined}
+            placeOfBirth=""
+            parentName=""
+            phoneNumber=""
+            districtId=""
+            districtName=""
+            villageId=""
+            villageName=""
+            address=""
           />
         )}
       </div>

@@ -91,12 +91,42 @@ enum Gender {
 }
 
 model Patient {
-  id         String  @id @default(cuid())
-  name       String
-  nik        String? @unique
-  birthDate  DateTime
-  gender     Gender
-  userId     String
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            String   @id @default(cuid())
+
+  // Data Anak
+  name          String
+  birthDate     DateTime
+  gender        Gender
+  placeOfBirth  String?       
+
+  // Data Orang Tua/Wali
+  parentName    String
+  phoneNumber   String?
+
+  // Data Alamat
+  districtId    String?
+  districtName  String?
+  villageId     String?
+  villageName   String?
+
+  address       String?
+
+
+  // Data Pendukung Lainnya
+  nik           String?  @unique
+
+
+  userId        String
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // =====================
+  // INDEXING (WAJIB)
+  // =====================
+  @@index([name])
+  @@index([parentName])
+  @@index([phoneNumber])
+  @@index([districtId, villageId])
 }
+

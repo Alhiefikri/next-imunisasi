@@ -15,6 +15,19 @@ export const PatientformSchema = z.object({
     .or(z.literal("")), // Boleh kosong atau harus valid 16 digit
   birthDate: z.date(),
   gender: z.enum(["LAKI_LAKI", "PEREMPUAN"]),
+  placeOfBirth: z.string().max(100, "Tempat lahir maksimal 100 karakter."),
+  parentName: z.string().max(100, "Nama orang tua/wali maksimal 100 karakter."),
+  phoneNumber: z
+    .string()
+    .max(15, "Nomor telepon maksimal 15 karakter.")
+    .optional(),
+
+  // Alamat
+  districtId: z.string().optional(),
+  districtName: z.string().optional(),
+  villageId: z.string().optional(),
+  villageName: z.string().optional(),
+  address: z.string().trim().optional(),
 });
 
 export type PatientFormValues = z.infer<typeof PatientformSchema>;

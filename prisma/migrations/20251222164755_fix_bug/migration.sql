@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Patient" ALTER COLUMN "districtId" DROP NOT NULL,
+ALTER COLUMN "districtName" DROP NOT NULL,
+ALTER COLUMN "villageId" DROP NOT NULL,
+ALTER COLUMN "villageName" DROP NOT NULL;

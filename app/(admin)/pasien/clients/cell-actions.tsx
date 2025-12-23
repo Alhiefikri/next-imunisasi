@@ -1,5 +1,6 @@
 "use client";
 
+import { removePatient } from "@/app/actions/patiens";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,11 +14,26 @@ import { router } from "better-auth/api";
 import { Edit, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
+import { toast } from "sonner";
 
 export default function CellActions({ id }: { id: string }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const onRemovePatient = async () => {
+    try {
+      setIsLoading(true);
+      await removePatient(id);
+    } catch (error) {
+      console.error("Error deleting patient:", error);
+    } finally {
+      router.refresh();
+      toast.success("Patient deleted successfully.");
+      setIsLoading(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
   return (
     <>
       <div className="flex justify-end gap-6">
@@ -58,6 +74,8 @@ export default function CellActions({ id }: { id: string }) {
             <Button
               variant="destructive"
               className="max-w-40 self-end cursor-pointer"
+              onClick={onRemovePatient}
+              disabled={isLoading}
             >
               {isLoading ? <Spinner className="size-6" /> : "Delete Patient"}
             </Button>

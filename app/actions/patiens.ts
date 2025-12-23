@@ -62,16 +62,12 @@ export const createPatient = async (params: PatientFormValues) => {
     const { id, ...rest } = validatedFields.data;
 
     // Cek apakah NIK sudah ada
-    const existingPatient = await prisma.patient.findUnique({
-      where: { nik: rest.nik },
-    });
-
     if (rest.nik) {
-      const existingPatient = await prisma.patient.findUnique({
+      const exists = await prisma.patient.findUnique({
         where: { nik: rest.nik },
       });
 
-      if (existingPatient) {
+      if (exists) {
         return {
           success: false,
           error: "NIK sudah terdaftar",
@@ -109,6 +105,95 @@ export const createPatient = async (params: PatientFormValues) => {
     return {
       success: false,
       error: "Gagal membuat data pasien",
+    };
+  }
+};
+export const updatePatient = async (params: PatientFormValues) => {
+  try {
+    const session = await requireAdmin();
+    if (!session) return { success: false, error: "Unauthorized" };
+
+    const validatedFields = PatientformSchema.safeParse(params);
+    if (!validatedFields.success) {
+      return {
+        success: false,
+        error: "Data tidak valid",
+        details: validatedFields.error.flatten().fieldErrors,
+      };
+    }
+
+    // Pastikan ID ada untuk proses update
+    const { id, ...rest } = validatedFields.data;
+    if (!id)
+      return { success: false, error: "ID Pasien diperlukan untuk update" };
+
+    // PERBAIKAN LOGIKA NIK:
+    // Cek NIK hanya jika NIK dikirimkan
+    if (rest.nik) {
+      const existingPatient = await prisma.patient.findFirst({
+        where: {
+          nik: rest.nik,
+          NOT: { id: id }, // Cari NIK yang sama TAPI bukan milik pasien ini
+        },
+      });
+
+      if (existingPatient) {
+        return {
+          success: false,
+          error: "NIK sudah digunakan oleh pasien lain",
+          code: "DUPLICATE_NIK",
+        };
+      }
+    }
+
+    // Update data
+    const patient = await prisma.patient.update({
+      where: { id },
+      data: {
+        ...rest,
+      },
+    });
+
+    return { success: true, data: patient };
+  } catch (error) {
+    console.error("Error update patient:", error);
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return {
+          success: false,
+          error: "NIK sudah terdaftar",
+          code: "DUPLICATE_NIK",
+        };
+      }
+      if (error.code === "P2025") {
+        return { success: false, error: "Data pasien tidak ditemukan" };
+      }
+    }
+
+    return { success: false, error: "Gagal ubah data pasien" };
+  }
+};
+
+export const removePatient = async (id: string) => {
+  try {
+    const session = await requireAdmin();
+    if (!session) {
+      return {
+        success: false,
+        error: "Unauthorized",
+      };
+    }
+
+    const res = await prisma.patient.delete({
+      where: { id },
+    });
+    return res;
+  } catch (error) {
+    console.error("Error fetching patient:", error);
+    return {
+      success: false,
+      error: "Gagal menghapus data pasien",
     };
   }
 };
