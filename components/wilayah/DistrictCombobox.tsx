@@ -104,7 +104,7 @@ export function DistrictCombobox({
                   "Kecamatan tidak ditemukan"
                 )}
               </CommandEmpty>
-              <CommandGroup className="max-h-[300px] overflow-y-auto">
+              <CommandGroup className="max-h-75 overflow-y-auto">
                 {districts.map((district) => (
                   <CommandItem
                     key={district.id}

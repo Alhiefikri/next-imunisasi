@@ -134,7 +134,7 @@ export function VillageCombobox({
                   "Pilih kecamatan terlebih dahulu"
                 )}
               </CommandEmpty>
-              <CommandGroup className="max-h-[300px] overflow-y-auto">
+              <CommandGroup className="max-h-75 overflow-y-auto">
                 {villages.map((village) => (
                   <CommandItem
                     key={village.id}

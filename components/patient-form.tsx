@@ -467,7 +467,7 @@ export default function PatientForm({
                             <Textarea
                               {...field}
                               placeholder="Jalan, RT/RW, Patokan rumah..."
-                              className="min-h-[100px] text-sm resize-none flex-1"
+                              className="min-h-25 text-sm resize-none flex-1"
                               disabled={isPending}
                             />
                           </FormControl>
@@ -499,7 +499,7 @@ export default function PatientForm({
             <Button
               type="submit"
               disabled={!form.formState.isValid || isPending}
-              className="min-w-[150px] shadow-sm"
+              className="min-w-37.5 shadow-sm"
             >
               {isPending ? (
                 <>

@@ -3,7 +3,7 @@ import { create } from "zustand";
 export interface VaccineProps {
   id: string;
   name: string;
-  description: string | null;
+  description: string | undefined;
 }
 
 interface VaccineModalProps {

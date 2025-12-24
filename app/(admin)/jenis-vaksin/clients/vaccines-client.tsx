@@ -53,6 +53,7 @@ export default function VaccinesClient({ vaccines }: { vaccines: Vaccine[] }) {
   useEffect(() => {
     if (vaccine) {
       form.setValue("name", vaccine.name);
+      form.setValue("description", vaccine.description);
     }
   }, [vaccine]);
 

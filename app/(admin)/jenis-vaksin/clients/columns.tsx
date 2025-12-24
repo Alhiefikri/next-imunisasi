@@ -22,7 +22,7 @@ export const columns: ColumnDef<Vaccine>[] = [
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
-        className="translate-y-[2px]"
+        className="translate-y-0.5"
       />
     ),
     cell: ({ row }) => (
@@ -30,7 +30,7 @@ export const columns: ColumnDef<Vaccine>[] = [
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
-        className="translate-y-[2px]"
+        className="translate-y-0.5"
       />
     ),
     enableSorting: false,
@@ -81,7 +81,7 @@ export const columns: ColumnDef<Vaccine>[] = [
           <FileText className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
           <div
             className={cn(
-              "text-sm leading-relaxed break-words min-w-[200px] max-w-[400px]",
+              "text-sm leading-relaxed wrap-break-word min-w-50 max-w-100",
               !description ? "italic text-muted-foreground" : "text-slate-600"
             )}
           >

@@ -133,8 +133,8 @@ model Vaccine {
   name        String     @unique
   description String?
   schedules   Schedule[] // Relasi ke jadwal
-
-createdAt     DateTime @default(now())
+  
+  createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
@@ -143,12 +143,14 @@ model Posyandu {
   id          String     @id @default(cuid())
   name        String
   address     String
-  districtId  String     // Untuk filtering otomatis berdasarkan wilayah
-  villageId   String     // Agar anak di kelurahan ini otomatis masuk list
-  villageName String?
+  // Data Alamat
+  districtId    String?
+  districtName  String?
+  villageId     String?
+  villageName   String?
   schedules   Schedule[]
 
-    createdAt     DateTime @default(now())
+  createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
