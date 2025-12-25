@@ -69,11 +69,11 @@ export const columns: ColumnDef<Patient>[] = [
   },
   // --- ORANG TUA & KONTAK ---
   {
-    accessorKey: "parentName",
+    accessorKey: "motherName",
     header: "Orang Tua / Wali",
     cell: ({ row }) => (
       <div className="flex flex-col text-sm">
-        <span className="font-medium">{row.original.parentName}</span>
+        <span className="font-medium">{row.original.motherName}</span>
         {row.original.phoneNumber && (
           <span className="text-xs text-muted-foreground flex items-center gap-1">
             <Phone className="h-3 w-3" /> {row.original.phoneNumber}

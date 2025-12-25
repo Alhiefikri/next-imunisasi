@@ -45,7 +45,8 @@ export default function PatientForm({
   birthDate,
   gender,
   placeOfBirth,
-  parentName,
+  motherName,
+  fatherName,
   phoneNumber,
   districtId,
   districtName,
@@ -66,7 +67,8 @@ export default function PatientForm({
       birthDate: birthDate || undefined,
       gender: gender || undefined,
       placeOfBirth: placeOfBirth || "",
-      parentName: parentName || "",
+      motherName: motherName || "",
+      fatherName: fatherName || "",
       phoneNumber: phoneNumber || "",
       districtId: districtId || undefined,
       districtName: districtName || undefined,
@@ -360,17 +362,17 @@ export default function PatientForm({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <FormField
                         control={form.control}
-                        name="parentName"
+                        name="motherName"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs font-bold text-muted-foreground uppercase">
-                              Nama Orang Tua{" "}
+                              Nama Ibu{" "}
                               <span className="text-destructive">*</span>
                             </FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
-                                placeholder="Ayah / Ibu"
+                                placeholder="Nama Ibu"
                                 className="h-9 text-sm"
                                 disabled={isPending}
                               />
@@ -381,16 +383,16 @@ export default function PatientForm({
                       />
                       <FormField
                         control={form.control}
-                        name="phoneNumber"
+                        name="fatherName"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs font-bold text-muted-foreground uppercase">
-                              No. HP / WA
+                              Nama Orang Ayah{" "}
                             </FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
-                                placeholder="08..."
+                                placeholder="Nama Ayah (Optional)"
                                 className="h-9 text-sm"
                                 disabled={isPending}
                               />
@@ -400,6 +402,26 @@ export default function PatientForm({
                         )}
                       />
                     </div>
+                    <FormField
+                      control={form.control}
+                      name="phoneNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-bold text-muted-foreground uppercase">
+                            No. HP / WA
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="08..."
+                              className="h-9 text-sm"
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <div className="border-t my-2" />
 

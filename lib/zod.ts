@@ -16,11 +16,17 @@ export const PatientformSchema = z.object({
   birthDate: z.date(),
   gender: z.enum(["LAKI_LAKI", "PEREMPUAN"]),
   placeOfBirth: z.string().max(100, "Tempat lahir maksimal 100 karakter."),
-  parentName: z
+  motherName: z
     .string()
-    .min(2, "Nama harus minimal 2 karakter.")
-    .max(100, "Nama maksimal 100 karakter.")
+    .min(2, "Nama Ibu harus minimal 2 karakter.")
+    .max(100, "Nama Ibu maksimal 100 karakter.")
     .trim(),
+  fatherName: z
+    .string()
+    .min(2, "Nama Ayah harus minimal 2 karakter.")
+    .max(100, "Nama Ayah maksimal 100 karakter.")
+    .trim()
+    .optional(),
   phoneNumber: z
     .string()
     .max(15, "Nomor telepon maksimal 15 karakter.")
