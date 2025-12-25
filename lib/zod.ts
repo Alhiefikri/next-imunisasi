@@ -47,6 +47,7 @@ export const PosyanduFormSchema = z.object({
   villageName: z.string().optional(),
   address: z.string().min(2, "Nama posyandu harus minimal 2 karakter."),
 });
+
 export type PatientFormValues = z.infer<typeof PatientformSchema>;
 export type VaccineFormValues = z.infer<typeof VaccineFormSchema>;
 export type PosyanduFormValues = z.infer<typeof PosyanduFormSchema>;

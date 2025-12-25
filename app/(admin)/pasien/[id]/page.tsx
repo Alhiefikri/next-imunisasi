@@ -16,7 +16,6 @@ export default async function PatientPage({
 }) {
   const { id } = await params;
   const patient = await getUniquePatient(id);
-  console.log(patient);
   return (
     <>
       <div className="flex flex-col p-8">

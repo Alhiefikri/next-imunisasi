@@ -53,7 +53,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { title: "Dashboard", url: "/dashboard", icon: LucideIcons.Home },
       { title: "Data Anak", url: "/pasien", icon: LucideIcons.Baby },
       {
-        title: "Mulai Imunisasi",
+        title: "Jadwal Imunisasi",
         url: "/jadwal-imunisasi",
         icon: LucideIcons.Calendar,
         badge: "3",

@@ -20,7 +20,7 @@ export const columns: ColumnDef<Posyandu>[] = [
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
-        className="translate-y-[2px]"
+        className="translate-y-0.5"
       />
     ),
     cell: ({ row }) => (
@@ -28,7 +28,7 @@ export const columns: ColumnDef<Posyandu>[] = [
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
-        className="translate-y-[2px]"
+        className="translate-y-0.5"
       />
     ),
     enableSorting: false,
@@ -71,7 +71,7 @@ export const columns: ColumnDef<Posyandu>[] = [
       const village = row.original.villageName || "Tidak Set";
       const district = row.original.districtName || "Tidak Set";
       return (
-        <div className="flex flex-col gap-1 min-w-[150px]">
+        <div className="flex flex-col gap-1 min-w-37.5">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 uppercase">
             <Home className="h-3.5 w-3.5 text-emerald-500" />
             {village}
@@ -93,7 +93,7 @@ export const columns: ColumnDef<Posyandu>[] = [
         <div className="py-1">
           <p
             className={cn(
-              "text-sm leading-relaxed break-words min-w-[200px] max-w-[350px]",
+              "text-sm leading-relaxed wrap-break-word min-w-50 max-w-87.5",
               !address ? "italic text-muted-foreground" : "text-slate-600"
             )}
           >

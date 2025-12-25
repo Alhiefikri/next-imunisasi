@@ -30,6 +30,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  patients      Patient[]
 
   @@unique([email])
   @@map("user")
@@ -90,40 +91,36 @@ enum Gender {
   PEREMPUAN
 }
 
+
 model Patient {
   id            String   @id @default(cuid())
-
   // Data Anak
   name          String
   birthDate     DateTime
   gender        Gender
   placeOfBirth  String?       
-
   // Data Orang Tua/Wali
-  parentName    String
+  motherName    String
+  fatherName    String?
   phoneNumber   String?
-
   // Data Alamat
   districtId    String?
   districtName  String?
   villageId     String?
   villageName   String?
-
-  address       String?
-
+  address       String? @db.Text
 
   // Data Pendukung Lainnya
   nik           String?  @unique
-
-
   userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
+  immunizationRecords ImmunizationRecord[]
 
   @@index([name])
-  @@index([parentName])
+  @@index([motherName, fatherName])
   @@index([phoneNumber])
   @@index([districtId, villageId])
 }
@@ -131,8 +128,10 @@ model Patient {
 model Vaccine {
   id          String     @id @default(cuid())
   name        String     @unique
-  description String?
-  schedules   Schedule[] // Relasi ke jadwal
+  description String?   @db.Text
+
+  records ImmunizationRecord[]
+
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -142,38 +141,18 @@ model Vaccine {
 model Posyandu {
   id          String     @id @default(cuid())
   name        String
-  address     String
+  address     String @db.Text
   // Data Alamat
   districtId    String?
   districtName  String?
   villageId     String?
   villageName   String?
+
   schedules   Schedule[]
+
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-}
-
-// Model Jadwal (Penghubung)
-model Schedule {
-  id           String   @id @default(cuid())
-  date         DateTime
-  startTime    String?  // Misal "08:00"
-  endTime      String?  // Misal "11:00"
-  
-  // Relasi ke Master Data
-  vaccineId    String
-  vaccine      Vaccine  @relation(fields: [vaccineId], references: [id])
-  
-  posyanduId   String
-  posyandu     Posyandu @relation(fields: [posyanduId], references: [id])
-
-  status       ScheduleStatus @default(UPCOMING) // UPCOMING, ONGOING, COMPLETED, CANCELLED
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([date])
 }
 
 enum ScheduleStatus {
@@ -182,3 +161,46 @@ enum ScheduleStatus {
   COMPLETED
   CANCELLED
 }
+
+// Model Jadwal (Penghubung)
+model Schedule {
+  id           String   @id @default(cuid())
+  date         DateTime
+  status       ScheduleStatus @default(UPCOMING) // UPCOMING, ONGOING, COMPLETED, CANCELLED
+  
+  posyanduId   String
+  posyandu     Posyandu @relation(fields: [posyanduId], references: [id], onDelete: Restrict)
+  notes        String? @db.Text
+
+  records     ImmunizationRecord[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([date])
+}
+
+model ImmunizationRecord{
+  id          String   @id @default(cuid())
+
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  vaccineId  String
+  vaccine    Vaccine  @relation(fields: [vaccineId], references: [id], onDelete: Restrict)
+
+  scheduleId  String
+  schedule    Schedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+
+  notes          String? @db.Text
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([vaccineId]) 
+  @@index([scheduleId])
+}
+
+
+
