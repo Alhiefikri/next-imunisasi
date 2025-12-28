@@ -54,6 +54,15 @@ export const PosyanduFormSchema = z.object({
   address: z.string().min(2, "Nama posyandu harus minimal 2 karakter."),
 });
 
+export const JadwalFormSchema = z.object({
+  posyanduId: z.string().min(1, "Posyandu harus dipilih."),
+  date: z.date().refine((date) => date >= new Date(), {
+    message: "Tanggal jadwal harus di masa depan.",
+  }),
+  notes: z.string().optional(),
+});
+
+export type JadwalFormValues = z.infer<typeof JadwalFormSchema>;
 export type PatientFormValues = z.infer<typeof PatientformSchema>;
 export type VaccineFormValues = z.infer<typeof VaccineFormSchema>;
 export type PosyanduFormValues = z.infer<typeof PosyanduFormSchema>;

@@ -1,35 +1,15 @@
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
-import Link from "next/dist/client/link";
-import React from "react";
+import { getJadwalData } from "@/app/actions/jadwal";
+import JadwalClients from "./clients/jadwal-clients";
+import { getPosyanduData } from "@/app/actions/posyandu";
 
-export default function JadwalImunisasi() {
+export default async function PosyanduPage() {
+  const [jadwalData, posyanduData] = await Promise.all([
+    getJadwalData(),
+    getPosyanduData(),
+  ]);
   return (
-    <div className="flex flex-col p-8">
-      <div className="flex w-full justify-between">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Jadwal Imunisasi</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <Link href="/pasien/new">
-          <Button className="cursor-pointer"></Button>
-        </Link>
-      </div>
+    <div>
+      <JadwalClients jadwalList={jadwalData} posyanduList={posyanduData} />
     </div>
   );
 }
