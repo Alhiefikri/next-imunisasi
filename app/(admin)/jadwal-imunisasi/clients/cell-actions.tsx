@@ -22,6 +22,8 @@ export default function CellActions({ data }: { data: JadwalProps }) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const router = useRouter();
 
+  console.log("CellActions data:", data);
+
   // Fungsi Hapus Jadwal
   const onRemoveJadwal = async () => {
     try {
@@ -47,11 +49,11 @@ export default function CellActions({ data }: { data: JadwalProps }) {
     <>
       <div className="flex items-center justify-center gap-4">
         {/* Tombol Mulai Pelayanan (Hanya muncul jika belum selesai) */}
-        {data.status !== "COMPLETED" && (
+        {data.status !== "COMPLETED" && data.status !== "CANCELLED" && (
           <div
             className="cursor-pointer text-emerald-600 hover:text-emerald-700 transition"
             title="Mulai Pelayanan"
-            onClick={() => router.push(`/dashboard/pelayanan/${data.id}`)}
+            onClick={() => router.push(`/pelayanan/${data.id}`)}
           >
             <PlayCircle className="h-5 w-5" />
           </div>

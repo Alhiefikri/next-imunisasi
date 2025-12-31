@@ -100,8 +100,10 @@ model Patient {
   gender        Gender
   placeOfBirth  String?       
   // Data Orang Tua/Wali
-  motherName    String
+  motherName    String? 
   fatherName    String?
+  nikmother     String? @unique
+  nikfather     String? @unique
   phoneNumber   String?
   // Data Alamat
   districtId    String?
@@ -169,7 +171,7 @@ model Schedule {
   status       ScheduleStatus @default(UPCOMING) // UPCOMING, ONGOING, COMPLETED, CANCELLED
   
   posyanduId   String
-  posyandu     Posyandu @relation(fields: [posyanduId], references: [id], onDelete: Restrict)
+  posyandu     Posyandu @relation(fields: [posyanduId], references: [id], onDelete: Cascade)
   notes        String? @db.Text
 
   records     ImmunizationRecord[]
@@ -180,26 +182,36 @@ model Schedule {
   @@index([date])
 }
 
+enum AttendanceStatus{
+ WAITING
+ SERVED
+ CANCELLED
+}
+
 model ImmunizationRecord{
   id          String   @id @default(cuid())
 
   patientId   String
   patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  status     AttendanceStatus @default(WAITING) // WAITING, SERVED, CANCELLED
   
-  vaccineId  String
-  vaccine    Vaccine  @relation(fields: [vaccineId], references: [id], onDelete: Restrict)
+  vaccines Vaccine[]
 
   scheduleId  String
-  schedule    Schedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  schedule    Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+
 
   notes          String? @db.Text
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@index([patientId])
-  @@index([vaccineId]) 
-  @@index([scheduleId])
+  @@unique([patientId, scheduleId]) 
+
+  @@index([patientId, scheduleId])
+  @@index([status])
 }
 
 

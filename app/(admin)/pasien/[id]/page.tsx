@@ -47,8 +47,10 @@ export default async function PatientPage({
             birthDate={patient.birthDate}
             gender={patient.gender}
             placeOfBirth={patient.placeOfBirth ?? ""}
-            motherName={patient.motherName}
+            motherName={patient.motherName!}
+            nikmother={patient.nikmother ?? ""}
             fatherName={patient.fatherName!}
+            nikfather={patient.nikfather ?? ""}
             phoneNumber={patient.phoneNumber ?? ""}
             districtId={patient.districtId ?? ""}
             villageId={patient.villageId ?? ""}
