@@ -1,5 +1,14 @@
 "use client";
 
+import { useEffect, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
+
 import { DataTable } from "@/components/data-table";
 import {
   Breadcrumb,
@@ -19,60 +28,71 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Spinner } from "@/components/ui/spinner";
-import { JadwalFormSchema, JadwalFormValues } from "@/lib/zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { useJadwal } from "@/hooks/use-jadwal";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
+import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 
-import { createJadwal, updateJadwal } from "@/app/actions/jadwal";
+import { useJadwal } from "@/hooks/use-jadwal";
+import { ScheduleFormSchema, type ScheduleFormValues } from "@/lib/zod";
+import { createSchedule, updateSchedule } from "@/app/actions/jadwal";
+import { cn } from "@/lib/utils";
+import type { Schedule, Posyandu } from "@/lib/generated/prisma/client";
 import { columns } from "./columns";
-import PosyanduComboBox from "@/components/PosyanduComboBox";
+
+type ScheduleWithRelations = Schedule & {
+  posyandu: Posyandu;
+  _count: {
+    immunizationRecords: number;
+    vaccineHistories: number;
+  };
+};
+
+interface JadwalClientsProps {
+  schedules: ScheduleWithRelations[];
+  posyandus: Posyandu[];
+}
 
 export default function JadwalClients({
-  jadwalList,
-  posyanduList,
-}: {
-  jadwalList: any[];
-  posyanduList: any[];
-}) {
+  schedules,
+  posyandus,
+}: JadwalClientsProps) {
   const { open, setOpen, jadwal, setJadwal } = useJadwal();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
-  const form = useForm<JadwalFormValues>({
-    resolver: zodResolver(JadwalFormSchema),
+  const form = useForm<ScheduleFormValues>({
+    resolver: zodResolver(ScheduleFormSchema),
     defaultValues: {
       posyanduId: "",
-      date: undefined,
+      date: new Date(),
       notes: "",
     },
   });
 
-  // BEST PRACTICE: Reset form saat 'jadwal' berubah (Edit vs Create)
   useEffect(() => {
     if (jadwal) {
       form.reset({
         posyanduId: jadwal.posyanduId,
         date: new Date(jadwal.date),
-        notes: jadwal.notes || "",
+        notes: jadwal.notes ?? "",
       });
     } else {
       form.reset({
@@ -83,112 +103,107 @@ export default function JadwalClients({
     }
   }, [jadwal, form]);
 
-  const onSubmit = async (values: JadwalFormValues) => {
-    try {
-      let res;
+  const onSubmit = (values: ScheduleFormValues) => {
+    startTransition(async () => {
+      try {
+        if (jadwal?.id) {
+          await updateSchedule(jadwal.id, values);
+          toast.success("Jadwal berhasil diperbarui");
+        } else {
+          await createSchedule(values);
+          toast.success("Jadwal berhasil dibuat");
+        }
 
-      if (jadwal?.id) {
-        // Mode Update: Kirim objek sesuai interface JadwalProps
-        res = await updateJadwal({
-          id: jadwal.id,
-          posyanduId: values.posyanduId,
-          date: values.date,
-          notes: values.notes,
-          status: jadwal.status, // Tetap gunakan status lama
-        });
-      } else {
-        // Mode Create: Kirim parameter terpisah (posyanduId, date, notes)
-        res = await createJadwal(values.posyanduId, values.date, values.notes);
-      }
-
-      if (res?.success) {
-        toast.success(
-          jadwal ? "Jadwal berhasil diperbarui" : "Jadwal berhasil dibuat"
-        );
-        handleClose(); // Fungsi reset & close yang kita buat sebelumnya
         router.refresh();
-      } else {
-        toast.error(res?.error || "Gagal menyimpan jadwal");
+        handleClose();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Terjadi kesalahan";
+        toast.error(message);
       }
-    } catch (error) {
-      toast.error("Terjadi kesalahan sistem");
-    }
+    });
   };
 
-  // Helper untuk menutup modal dan membersihkan state
   const handleClose = () => {
     setOpen(false);
-    // Timeout sedikit agar transisi modal selesai sebelum state dibersihkan
-    setTimeout(() => {
-      setJadwal(undefined as any);
-      form.reset();
-    }, 300);
+    form.reset();
+    setJadwal(null);
   };
 
   return (
     <>
-      {/* Gunakan handleClose pada onOpenChange agar aman */}
       <Dialog
         open={open}
         onOpenChange={(val) => (!val ? handleClose() : setOpen(true))}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {jadwal ? "Edit Jadwal Imunisasi" : "Buat Jadwal Baru"}
+              {jadwal ? "Edit Jadwal" : "Tambah Jadwal"}
             </DialogTitle>
           </DialogHeader>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* FIELD POSYANDU */}
               <FormField
                 control={form.control}
                 name="posyanduId"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Lokasi Posyandu{" "}
-                      <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <PosyanduComboBox
-                        items={posyanduList}
-                        value={field.value}
-                        onSelect={field.onChange}
-                      />
-                    </FormControl>
+                  <FormItem>
+                    <FormLabel>Posyandu *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isPending}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih posyandu" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {posyandus.map((posyandu) => (
+                          <SelectItem key={posyandu.id} value={posyandu.id}>
+                            {posyandu.name}
+                            {posyandu.villageName && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                • {posyandu.villageName}
+                              </span>
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* FIELD DATE */}
               <FormField
                 control={form.control}
                 name="date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Tanggal Pelaksanaan{" "}
-                      <span className="text-destructive">*</span>
-                    </FormLabel>
+                    <FormLabel>Tanggal *</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
                             variant="outline"
                             className={cn(
-                              "h-9 pl-3 text-left font-normal",
+                              "justify-start text-left font-normal",
                               !field.value && "text-muted-foreground"
                             )}
+                            disabled={isPending}
                           >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? (
-                              format(field.value, "PPP")
+                              format(field.value, "dd MMMM yyyy", {
+                                locale: idLocale,
+                              })
                             ) : (
-                              <span>Pilih Tanggal</span>
+                              <span>Pilih tanggal</span>
                             )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -197,32 +212,35 @@ export default function JadwalClients({
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
+                          disabled={(date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return date < today;
+                          }}
                           initialFocus
                         />
                       </PopoverContent>
                     </Popover>
+                    <FormDescription>
+                      Tanggal pelaksanaan kegiatan posyandu
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* FIELD NOTES */}
               <FormField
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Catatan (Opsional)
-                    </FormLabel>
+                    <FormLabel>Catatan</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
-                        placeholder="Contoh: Stok vaksin Polio terbatas"
-                        className="resize-none text-sm"
+                        placeholder="Catatan tambahan (opsional)"
+                        rows={3}
+                        disabled={isPending}
                       />
                     </FormControl>
                     <FormMessage />
@@ -230,59 +248,39 @@ export default function JadwalClients({
                 )}
               />
 
-              <div className="flex justify-end pt-4">
-                <Button
-                  type="submit"
-                  className="w-full sm:w-auto min-w-[120px]"
-                  disabled={
-                    !form.formState.isValid || form.formState.isSubmitting
-                  }
-                >
-                  {form.formState.isSubmitting ? (
-                    <Spinner className="size-4" />
-                  ) : jadwal ? (
-                    "Update Jadwal"
-                  ) : (
-                    "Simpan Jadwal"
-                  )}
-                </Button>
-              </div>
+              <Button type="submit" className="w-full" disabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Spinner className="size-4 mr-2" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan"
+                )}
+              </Button>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col p-8 space-y-6">
-        <div className="flex w-full justify-between items-center">
+      <div className="flex flex-col p-8">
+        <div className="flex w-full justify-between items-center mb-6">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard text-xs">
-                  Dashboard
-                </BreadcrumbLink>
+                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage className="text-xs">
-                  Jadwal Imunisasi
-                </BreadcrumbPage>
+                <BreadcrumbPage>Jadwal</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
 
-          <Button
-            onClick={() => {
-              setJadwal(undefined as any); // Pastikan state bersih sebelum buka modal create
-              setOpen(true);
-            }}
-          >
-            Buat Jadwal Baru
-          </Button>
+          <Button onClick={() => setOpen(true)}>Tambah Jadwal</Button>
         </div>
 
-        <div className="bg-white border rounded-xl overflow-hidden">
-          <DataTable columns={columns} data={jadwalList} />
-        </div>
+        <DataTable columns={columns} data={schedules} />
       </div>
     </>
   );

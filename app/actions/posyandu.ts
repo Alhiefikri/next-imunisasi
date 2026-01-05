@@ -1,115 +1,115 @@
 "use server";
 
-import { PosyanduProps } from "@/hooks/use-posyandu";
-import { requireAdmin } from "@/lib/auth-utils";
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/db";
+import { requireAdmin } from "@/lib/auth-utils";
+import { PosyanduFormSchema } from "@/lib/zod";
+import type { Posyandu } from "@/lib/generated/prisma/client";
 
-export const getPosyanduData = async () => {
-  try {
-    const session = await requireAdmin();
+// ==================== QUERIES ====================
 
-    if (!session) {
-      throw new Error("Unauthorized");
-    }
+export async function getPosyandus() {
+  await requireAdmin();
 
-    const res = await prisma.posyandu.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-
-    return res;
-  } catch (error) {
-    console.error("Error fetching vaccines:", error);
-    throw new Error("Failed to fetch vaccines");
-  }
-};
-
-export const createPosyandu = async (
-  name: string,
-  address: string,
-  districtId: string,
-  villageId: string,
-  districtName: string,
-  villageName: string
-) => {
-  try {
-    const session = await requireAdmin();
-
-    if (!session) {
-      return {
-        success: false,
-        error: "Unauthorized",
-      };
-    }
-
-    const res = await prisma.posyandu.create({
-      data: {
-        name,
-        address,
-        districtId,
-        villageId,
-        districtName,
-        villageName,
+  return await prisma.posyandu.findMany({
+    orderBy: { name: "asc" }, // Biasanya urutan abjad lebih enak untuk list posyandu
+    include: {
+      _count: {
+        select: { schedules: true },
       },
-    });
+    },
+  });
+}
 
-    return res;
-  } catch (error) {
-    console.error("Error creating vaccine:", error);
-    return {
-      success: false,
-      error: "Failed to create vaccine",
-    };
-  }
-};
+export async function getPosyandu(id: string): Promise<Posyandu | null> {
+  await requireAdmin();
 
-export const updatePosyandu = async (posyandu: PosyanduProps) => {
-  try {
-    const session = await requireAdmin();
-
-    if (!session) {
-      throw new Error("Unauthorized");
-    }
-
-    const res = await prisma.posyandu.update({
-      where: { id: posyandu.id },
-      data: {
-        name: posyandu.name,
-        address: posyandu.address,
-        districtId: posyandu.districtId,
-        villageId: posyandu.villageId,
-        districtName: posyandu.districtName,
-        villageName: posyandu.villageName,
+  return await prisma.posyandu.findUnique({
+    where: { id },
+    include: {
+      schedules: {
+        orderBy: { date: "desc" },
+        take: 5,
       },
-    });
+    },
+  });
+}
 
-    return res;
-  } catch (error) {
-    console.error("Error updating vaccine:", error);
-    return {
-      success: false,
-      error: "Failed to update vaccine",
-    };
+// ==================== MUTATIONS ====================
+
+export async function createPosyandu(input: unknown) {
+  await requireAdmin();
+  const data = PosyanduFormSchema.parse(input);
+
+  // Check unik (Opsional tapi disarankan)
+  const existing = await prisma.posyandu.findFirst({
+    where: {
+      name: { equals: data.name, mode: "insensitive" },
+      villageId: data.villageId,
+    },
+  });
+
+  if (existing)
+    throw new Error("Posyandu dengan nama tersebut sudah ada di desa ini");
+
+  const posyandu = await prisma.posyandu.create({ data });
+
+  revalidatePath("/dashboard/posyandu");
+  return posyandu;
+}
+
+export async function updatePosyandu(id: string, input: unknown) {
+  await requireAdmin();
+  const data = PosyanduFormSchema.parse(input);
+
+  const posyandu = await prisma.posyandu.update({
+    where: { id },
+    data,
+  });
+
+  revalidatePath("/dashboard/posyandu");
+  revalidatePath(`/dashboard/posyandu/${id}`);
+  return posyandu;
+}
+
+export async function deletePosyandu(id: string) {
+  await requireAdmin();
+
+  // 1. Cek relasi ke Jadwal (Schedules)
+  const hasSchedules = await prisma.schedule.count({
+    where: { posyanduId: id },
+  });
+
+  if (hasSchedules > 0) {
+    throw new Error(
+      "Posyandu tidak bisa dihapus karena sudah memiliki riwayat jadwal."
+    );
   }
-};
 
-export const removePosyandu = async (id: string) => {
+  // 2. Cek relasi ke Pasien (jika di schema kamu Patient ikat ke Posyandu)
+  // const hasPatients = await prisma.patient.count({ where: { posyanduId: id } });
+
   try {
-    const session = await requireAdmin();
-
-    if (!session) {
-      throw new Error("Unauthorized");
-    }
-
-    const res = await prisma.posyandu.delete({
-      where: { id },
-    });
-
-    return res;
+    await prisma.posyandu.delete({ where: { id } });
+    revalidatePath("/dashboard/posyandu");
+    return { success: true };
   } catch (error) {
-    console.error("Error deleting vaccine:", error);
-    return {
-      success: false,
-      error: "Failed to delete vaccine",
-    };
+    throw new Error("Gagal menghapus data");
   }
-};
+}
+
+export async function searchPosyandus(query: string) {
+  await requireAdmin();
+
+  return await prisma.posyandu.findMany({
+    where: {
+      OR: [
+        { name: { contains: query, mode: "insensitive" } },
+        { address: { contains: query, mode: "insensitive" } },
+        { districtName: { contains: query, mode: "insensitive" } },
+        { villageName: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    take: 10,
+  });
+}

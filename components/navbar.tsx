@@ -12,6 +12,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import Link from "next/link";
 import { LayoutDashboard, LogOut } from "lucide-react";
+import { signOut } from "better-auth/api";
+import { authClient } from "@/lib/auth-client";
 
 export default function NavMenu({
   userName,
@@ -51,7 +53,10 @@ export default function NavMenu({
                     </Link>
                   </NavigationMenuLink>
                   <NavigationMenuLink asChild>
-                    <div className="flex-row items-center gap-2 cursor-pointer">
+                    <div
+                      className="flex-row items-center gap-2 cursor-pointer"
+                      onClick={() => authClient.signOut()}
+                    >
                       <LogOut />
                       Signout
                     </div>

@@ -1,19 +1,31 @@
-import { removePosyandu } from "@/app/actions/posyandu";
-import { removeVaccine } from "@/app/actions/vaccines";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Edit, Trash, Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter, // Tambahkan ini
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner";
-import { PosyanduProps, usePosyandu } from "@/hooks/use-posyandu";
-import { Edit, Trash } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
+import { usePosyandu } from "@/hooks/use-posyandu";
+import { deletePosyandu } from "@/app/actions/posyandu";
+
+interface CellActionsProps {
+  id: string;
+  name: string;
+  address: string;
+  districtId?: string | null; // Tambahkan null karena Prisma mengirim null
+  districtName?: string | null;
+  villageId?: string | null;
+  villageName?: string | null;
+}
 
 export default function CellActions({
   id,
@@ -23,81 +35,80 @@ export default function CellActions({
   districtName,
   villageId,
   villageName,
-}: PosyanduProps) {
+}: CellActionsProps) {
   const { setPosyandu, setOpen } = usePosyandu();
-  const [isLoading, setIsloading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const router = useRouter();
 
-  const onRemovePosyandu = async () => {
-    try {
-      setIsloading(true);
-      await removePosyandu(id);
-    } catch (error) {
-      console.error("Error deleting posyandu:", error);
-    } finally {
-      router.refresh();
-      setIsloading(false);
-      setIsDeleteModalOpen(false);
-      toast.success(`Posyandu ${name} deleted successfully.`);
-    }
+  const handleEdit = () => {
+    // Mapping data agar aman dimasukkan ke Form
+    setPosyandu({
+      id,
+      name,
+      address,
+      districtId: districtId ?? "",
+      districtName: districtName ?? "",
+      villageId: villageId ?? "",
+      villageName: villageName ?? "",
+    } as any);
+    setOpen(true);
+  };
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      try {
+        await deletePosyandu(id);
+        toast.success(`Posyandu ${name} berhasil dihapus`);
+        setIsDeleteModalOpen(false);
+        router.refresh();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Gagal menghapus");
+      }
+    });
   };
 
   return (
     <>
-      <div className="flex justify-end gap-6">
-        <div
-          className="cursor-pointer"
-          title="Edit"
-          onClick={() => {
-            setOpen(true);
-            setPosyandu({
-              id,
-              name,
-              address,
-              districtId,
-              districtName,
-              villageId,
-              villageName,
-            });
-          }}
-        >
-          <Edit />
-        </div>
-        <div
-          className="cursor-pointer"
-          title="Delete"
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="icon" onClick={handleEdit}>
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => setIsDeleteModalOpen(true)}
         >
-          <Trash className="text-red-500" />
-        </div>
+          <Trash className="h-4 w-4 text-destructive" />
+        </Button>
       </div>
 
-      {/* Delete Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent
-          className="sm:max-w-106.25 flex flex-col gap-6"
-          aria-describedby="vaccine"
-          aria-description="delete vaccine"
-        >
-          <DialogHeader className="gap-6">
-            <DialogTitle>Delete Posyandu</DialogTitle>
-            <DialogDescription className="flex flex-col">
-              <span className="text-md">
-                Are you sure you want to delete this posyandu {name}?
-                <span>This action cannot be undone.</span>
-              </span>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hapus Posyandu</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus <strong>{name}</strong>?
+              Tindakan ini permanen dan tidak dapat dibatalkan.
             </DialogDescription>
           </DialogHeader>
-
-          <Button
-            variant="destructive"
-            className="max-w-40 self-end cursor-pointer"
-            disabled={isLoading}
-            onClick={onRemovePosyandu}
-          >
-            {isLoading ? <Spinner className="size-6" /> : "Delete"}
-          </Button>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={isPending}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isPending}
+            >
+              {isPending && <Loader2 className="size-4 mr-2 animate-spin" />}
+              Hapus
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

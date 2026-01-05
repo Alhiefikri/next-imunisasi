@@ -1,180 +1,156 @@
 "use server";
 
-import { AuthSession, requireAdmin } from "@/lib/auth-utils";
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/db";
-import { Patient, Prisma } from "@/lib/generated/prisma/client";
-import { PatientformSchema, PatientFormValues } from "@/lib/zod";
+import { requireAdmin } from "@/lib/auth-utils";
+import { PatientFormSchema } from "@/lib/zod";
 
-// --- Helper untuk menangani Error Unik (NIK/NIK Mother/NIK Father) ---
-const handleUniqueConstraintError = (error: any) => {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002"
-  ) {
-    // Prisma memberitahu field mana yang error di error.meta.target
-    const target = error.meta?.target as string[];
+// ==================== HELPERS ====================
 
-    if (target?.includes("nik")) {
-      return { error: "NIK Pasien sudah terdaftar", field: "nik" };
-    }
-    if (target?.includes("nikMother")) {
-      return {
-        error: "NIK Ibu sudah terdaftar pada pasien lain",
-        field: "nikMother",
-      };
-    }
-    if (target?.includes("nikFather")) {
-      return {
-        error: "NIK Ayah sudah terdaftar pada pasien lain",
-        field: "nikFather",
-      };
-    }
-    return { error: "Data unik sudah ada di database" };
-  }
-  return null; // Bukan error unique constraint
-};
+async function checkNIKExists(
+  payload: {
+    nik?: string | null;
+    nikmother?: string | null;
+    nikfather?: string | null;
+  },
+  excludeId?: string
+) {
+  // Hanya masukkan field yang ada isinya ke dalam query OR
+  const conditions = Object.entries(payload)
+    .filter(([_, value]) => !!value)
+    .map(([key, value]) => ({ [key]: value }));
 
-export const getAllPatiens = async () => {
-  try {
-    const session = await AuthSession();
-    if (!session) throw new Error("Unauthorized");
+  if (conditions.length === 0) return null;
 
-    const res = await prisma.patient.findMany({
-      take: 10,
-      orderBy: { updatedAt: "desc" },
-    });
-    return res;
-  } catch (error) {
-    console.error("Error fetching patients:", error);
-    throw new Error("Failed to fetch patients");
-  }
-};
+  const duplicate = await prisma.patient.findFirst({
+    where: {
+      isActive: true, // Opsional: apakah NIK yang sudah "dihapus" boleh dipakai lagi?
+      id: excludeId ? { not: excludeId } : undefined,
+      OR: conditions,
+    },
+  });
 
-export const getUniquePatient = async (id: string) => {
-  try {
-    const session = await requireAdmin();
-    if (!session) throw new Error("Unauthorized");
+  if (!duplicate) return null;
+  if (payload.nik && duplicate.nik === payload.nik)
+    return "NIK anak sudah terdaftar";
+  if (payload.nikmother && duplicate.nikmother === payload.nikmother)
+    return "NIK ibu sudah terdaftar";
+  return "NIK orang tua sudah terdaftar";
+}
 
-    const res = (await prisma.patient.findUnique({ where: { id } })) as Patient;
-    return res;
-  } catch (error) {
-    console.error("Error fetching patient:", error);
-  }
-};
+// ==================== QUERIES ====================
 
-export const createPatient = async (params: PatientFormValues) => {
-  try {
-    const session = await requireAdmin();
-    if (!session) return { success: false, error: "Unauthorized" };
+export async function getPatients() {
+  await requireAdmin(); // Pastikan hanya admin yang bisa akses
 
-    // Validasi Zod
-    const validatedFields = PatientformSchema.safeParse(params);
-    if (!validatedFields.success) {
-      return {
-        success: false,
-        error: "Data tidak valid",
-        details: validatedFields.error.flatten().fieldErrors,
-      };
-    }
+  return await prisma.patient.findMany({
+    where: { isActive: true }, // Hapus userId agar semua admin bisa lihat
+    orderBy: { createdAt: "desc" },
+    include: {
+      vaccineHistories: { include: { vaccine: true } },
+    },
+  });
+}
 
-    const { id, ...rest } = validatedFields.data;
+export async function getPatient(id: string) {
+  await requireAdmin();
 
-    // Langsung Create. Jika duplikat, akan masuk ke catch.
-    // Kita hapus pengecekan manual findUnique di sini agar hemat query.
-    const patient = await prisma.patient.create({
-      data: {
-        ...rest,
-        // Pastikan null jika string kosong agar unique constraint bekerja benar
-        nik: rest.nik || null,
-        nikmother: rest.nikmother || null,
-        nikfather: rest.nikfather || null,
-        userId: session.user.id,
+  return await prisma.patient.findFirst({
+    where: { id, isActive: true }, // Hapus userId
+    include: {
+      vaccineHistories: {
+        include: { vaccine: true, schedule: true },
+        orderBy: { givenAt: "desc" },
       },
-    });
+      immunizationRecords: {
+        include: { schedule: { include: { posyandu: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+}
 
-    return { success: true, data: patient };
-  } catch (error) {
-    console.error("Error creating patient:", error);
+// ==================== MUTATIONS ====================
 
-    // Cek error unik menggunakan helper
-    const uniqueError = handleUniqueConstraintError(error);
-    if (uniqueError) {
-      return {
-        success: false,
-        error: uniqueError.error,
-        code: "DUPLICATE_ENTRY",
-      };
-    }
+export async function createPatient(input: unknown) {
+  const session = await requireAdmin();
+  const data = PatientFormSchema.parse(input);
 
-    return { success: false, error: "Gagal membuat data pasien" };
-  }
-};
+  // KOREKSI: Bungkus dalam object sesuai definisi helper
+  const duplicateError = await checkNIKExists({
+    nik: data.nik,
+    nikmother: data.nikmother,
+    nikfather: data.nikfather,
+  });
 
-export const updatePatient = async (params: PatientFormValues) => {
+  if (duplicateError) throw new Error(duplicateError);
+
+  const patient = await prisma.patient.create({
+    data: {
+      ...data,
+      userId: session.user.id, // Penanda siapa yang mendaftarkan pertama kali
+      birthDate: new Date(data.birthDate!),
+    },
+  });
+
+  revalidatePath("/dashboard/patients");
+  return patient;
+}
+
+export async function updatePatient(id: string, input: unknown) {
+  await requireAdmin();
+  const data = PatientFormSchema.parse(input);
+
+  // KOREKSI: Gunakan object payload
+  const duplicateError = await checkNIKExists(
+    {
+      nik: data.nik,
+      nikmother: data.nikmother,
+      nikfather: data.nikfather,
+    },
+    id
+  );
+
+  if (duplicateError) throw new Error(duplicateError);
+
   try {
-    const session = await requireAdmin();
-    if (!session) return { success: false, error: "Unauthorized" };
-
-    const validatedFields = PatientformSchema.safeParse(params);
-    if (!validatedFields.success) {
-      return {
-        success: false,
-        error: "Data tidak valid",
-        details: validatedFields.error.flatten().fieldErrors,
-      };
-    }
-
-    const { id, ...rest } = validatedFields.data;
-    if (!id) return { success: false, error: "ID Pasien diperlukan" };
-
-    // Langsung Update. Prisma otomatis handle pengecekan unik "kecuali diri sendiri"
     const patient = await prisma.patient.update({
-      where: { id },
-      data: {
-        ...rest,
-        // Pastikan string kosong ("") diubah jadi null agar tidak dianggap duplikat
-        nik: rest.nik || null,
-        nikMother: rest.nikMother || null,
-        nikFather: rest.nikFather || null,
-      },
+      where: { id }, // Hapus userId agar admin lain bisa edit
+      data,
     });
 
-    return { success: true, data: patient };
+    revalidatePath("/dashboard/patients");
+    revalidatePath(`/dashboard/patients/${id}`);
+    return patient;
   } catch (error) {
-    console.error("Error update patient:", error);
-
-    // Cek error unik menggunakan helper
-    const uniqueError = handleUniqueConstraintError(error);
-    if (uniqueError) {
-      return {
-        success: false,
-        error: uniqueError.error,
-        code: "DUPLICATE_ENTRY",
-      };
-    }
-
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2025"
-    ) {
-      return { success: false, error: "Data pasien tidak ditemukan" };
-    }
-
-    return { success: false, error: "Gagal ubah data pasien" };
+    throw new Error("Pasien tidak ditemukan");
   }
-};
+}
 
-export const removePatient = async (id: string) => {
-  try {
-    const session = await requireAdmin();
-    if (!session) return { success: false, error: "Unauthorized" };
+export async function deletePatient(id: string) {
+  await requireAdmin();
 
-    const res = await prisma.patient.delete({
-      where: { id },
-    });
-    return res;
-  } catch (error) {
-    console.error("Error deleting patient:", error);
-    return { success: false, error: "Gagal menghapus data pasien" };
-  }
-};
+  await prisma.patient.update({
+    where: { id }, // Hapus userId
+    data: { isActive: false },
+  });
+
+  revalidatePath("/dashboard/patients");
+}
+
+export async function searchPatients(query: string) {
+  await requireAdmin();
+
+  return await prisma.patient.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        { name: { contains: query, mode: "insensitive" } },
+        { nik: { contains: query } },
+        { motherName: { contains: query, mode: "insensitive" } },
+        { fatherName: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    take: 10,
+  });
+}

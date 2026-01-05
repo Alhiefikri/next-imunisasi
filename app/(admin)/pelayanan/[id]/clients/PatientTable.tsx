@@ -3,17 +3,37 @@
 import { DataTable } from "./data-table";
 import { columns } from "./columns";
 
+type PatientWithStatus = {
+  id: string;
+  name: string;
+  birthDate: string;
+  gender: string;
+  motherName: string | null;
+  nik: string | null;
+  status: "WAITING" | "SERVED" | "CANCELLED";
+  recordId?: string;
+  vaccineCount?: number;
+};
+
+interface PatientTableProps {
+  patients: PatientWithStatus[];
+  onSelectPatient: (patient: PatientWithStatus) => void;
+  selectedId?: string;
+}
+
 export default function PatientTable({
-  data,
+  patients,
   onSelectPatient,
-}: {
-  data: any[];
-  onSelectPatient: (patient: any) => void;
-}) {
-  console.log("PatientTable data:", data);
+  selectedId,
+}: PatientTableProps) {
   return (
-    <div className="rounded-md border">
-      <DataTable columns={columns} data={data} onRowClick={onSelectPatient} />
+    <div className="rounded-lg border bg-white">
+      <DataTable
+        columns={columns}
+        data={patients}
+        onRowClick={onSelectPatient}
+        selectedId={selectedId}
+      />
     </div>
   );
 }

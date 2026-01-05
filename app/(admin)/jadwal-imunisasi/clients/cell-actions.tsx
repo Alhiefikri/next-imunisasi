@@ -1,6 +1,10 @@
 "use client";
 
-import { removeJadwal } from "@/app/actions/jadwal"; // Pastikan path action benar
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Edit, Trash, PlayCircle, Eye } from "lucide-react"; // Tambahkan Eye
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,107 +14,133 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { JadwalProps, useJadwal } from "@/hooks/use-jadwal";
-import { Edit, Trash, PlayCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
+import { useJadwal, type JadwalProps } from "@/hooks/use-jadwal";
+import { deleteSchedule } from "@/app/actions/jadwal";
+import { cn } from "@/lib/utils";
 
 export default function CellActions({ data }: { data: JadwalProps }) {
   const { setJadwal, setOpen } = useJadwal();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const router = useRouter();
 
-  console.log("CellActions data:", data);
+  const isCompleted = data.status === "COMPLETED";
 
-  // Fungsi Hapus Jadwal
-  const onRemoveJadwal = async () => {
-    try {
-      setIsLoading(true);
-      const res = await removeJadwal(data.id);
-
-      if (res.success) {
-        toast.success(`Jadwal di berhasil dihapus.`);
-        setIsDeleteModalOpen(false);
-        router.refresh();
-      } else {
-        toast.error(res.error || "Gagal menghapus jadwal");
-      }
-    } catch (error) {
-      console.error("Error deleting schedule:", error);
-      toast.error("Terjadi kesalahan sistem.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleEdit = () => {
+    setJadwal(data);
+    setOpen(true);
   };
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      try {
+        await deleteSchedule(data.id);
+        toast.success("Jadwal berhasil dihapus");
+        router.refresh();
+        setIsDeleteModalOpen(false);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Gagal menghapus jadwal";
+        toast.error(message);
+      }
+    });
+  };
+
+  const handleNavigate = () => {
+    router.push(`/pelayanan/${data.id}`);
+  };
+
+  // Logic Visibility
+  const canEdit = !isCompleted;
+  // Hapus hanya jika belum selesai DAN belum ada data pelayanan sama sekali
+  const canDelete =
+    !isCompleted && (data._count?.immunizationRecords ?? 0) === 0;
+  const canStartService =
+    data.status === "UPCOMING" || data.status === "ONGOING";
 
   return (
     <>
-      <div className="flex items-center justify-center gap-4">
-        {/* Tombol Mulai Pelayanan (Hanya muncul jika belum selesai) */}
-        {data.status !== "COMPLETED" && data.status !== "CANCELLED" && (
-          <div
-            className="cursor-pointer text-emerald-600 hover:text-emerald-700 transition"
-            title="Mulai Pelayanan"
-            onClick={() => router.push(`/pelayanan/${data.id}`)}
+      <div className="flex items-start justify-end gap-2">
+        {/* TOMBOL LIHAT (Muncul hanya jika COMPLETED) */}
+        {isCompleted && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNavigate}
+            title="Lihat Detail Pelayanan"
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
           >
-            <PlayCircle className="h-5 w-5" />
-          </div>
+            <Eye className="h-4 w-4" />
+          </Button>
         )}
 
-        {/* Tombol Edit */}
-        <div
-          className="cursor-pointer text-slate-600 hover:text-primary transition"
-          title="Edit"
-          onClick={() => {
-            setOpen(true);
-            setJadwal(data); // Mengirim seluruh data jadwal ke store/state
-          }}
-        >
-          <Edit className="h-5 w-5" />
-        </div>
+        {/* TOMBOL MULAI (Hanya jika belum selesai) */}
+        {canStartService && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNavigate}
+            title="Mulai Pelayanan"
+            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+          >
+            <PlayCircle className="h-4 w-4" />
+          </Button>
+        )}
 
-        {/* Tombol Delete */}
-        <div
-          className="cursor-pointer text-rose-500 hover:text-rose-700 transition"
-          title="Delete"
-          onClick={() => setIsDeleteModalOpen(true)}
-        >
-          <Trash className="h-5 w-5" />
-        </div>
+        {/* TOMBOL EDIT */}
+        {canEdit && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleEdit}
+            title="Edit Jadwal"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
+
+        {/* TOMBOL HAPUS */}
+        {canDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsDeleteModalOpen(true)}
+            title="Hapus Jadwal"
+          >
+            <Trash className="h-4 w-4 text-destructive" />
+          </Button>
+        )}
       </div>
 
-      {/* Delete Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md flex flex-col gap-6">
-          <DialogHeader className="gap-2">
+        <DialogContent>
+          <DialogHeader>
             <DialogTitle>Hapus Jadwal</DialogTitle>
-            <DialogDescription className="text-sm">
+            <DialogDescription>
               Apakah Anda yakin ingin menghapus jadwal di{" "}
-              <span className="font-bold text-slate-900">
-                {data.posyandu?.name}
-              </span>
-              ? Catatan medis yang terkait dengan jadwal ini mungkin akan
-              terdampak.
+              <strong>{data.posyandu?.name}</strong> pada tanggal{" "}
+              <strong>{new Date(data.date).toLocaleDateString("id-ID")}</strong>
+              ?
+              <br />
+              <br />
+              Tindakan ini tidak dapat dibatalkan.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => setIsDeleteModalOpen(false)}
-              disabled={isLoading}
+              disabled={isPending}
             >
               Batal
             </Button>
             <Button
               variant="destructive"
-              className="min-w-24 justify-center"
-              disabled={isLoading}
-              onClick={onRemoveJadwal}
+              onClick={handleDelete}
+              disabled={isPending}
             >
-              {isLoading ? <Spinner className="size-4" /> : "Ya, Hapus"}
+              {isPending ? <Spinner className="size-4 mr-2" /> : null}
+              Hapus
             </Button>
           </div>
         </DialogContent>

@@ -1,111 +1,136 @@
-import z from "zod";
+import { z } from "zod";
 
-export const PatientformSchema = z.object({
+enum Gender {
+  LAKI_LAKI = "LAKI_LAKI",
+  PEREMPUAN = "PEREMPUAN",
+}
+
+// ==================== HELPERS ====================
+
+// Di zod.ts
+const optionalTrimmedString = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v === "" || !v ? undefined : v));
+// Di file zod.ts
+const nikSchema = z
+  .string()
+  .trim()
+  .length(16, "NIK harus tepat 16 digit")
+  .regex(/^\d+$/, "NIK harus berisi angka saja")
+  .optional()
+  .or(z.literal(""))
+  .transform((v) => (v === "" ? undefined : v)); // Gunakan undefined, bukan null
+
+// ==================== SCHEMAS ====================
+
+export const PatientFormSchema = z.object({
   id: z.string().optional(),
-  name: z
-    .string()
-    .min(2, "Nama harus minimal 2 karakter.")
-    .max(100, "Nama maksimal 100 karakter.")
-    .trim(),
-  nik: z
-    .string()
-    .trim()
-    .length(16, "NIK harus tepat 16 digit.")
-    .regex(/^\d+$/, "NIK hanya boleh berisi angka.")
-    .or(z.literal("")), // Boleh kosong atau harus valid 16 digit
-  birthDate: z.date(),
-  gender: z.enum(["LAKI_LAKI", "PEREMPUAN"]),
-  placeOfBirth: z.string().max(100, "Tempat lahir maksimal 100 karakter."),
-  motherName: z
-    .string()
-    .min(2, "Nama Ibu harus minimal 2 karakter.")
-    .max(100, "Nama Ibu maksimal 100 karakter.")
-    .trim(),
-  nikmother: z
-    .string()
-    .trim()
-    .length(16, "NIK harus tepat 16 digit.")
-    .regex(/^\d+$/, "NIK hanya boleh berisi angka.")
-    .or(z.literal("")), // Boleh kosong atau harus valid 16 digit
-  fatherName: z
-    .string()
-    .min(2, "Nama Ayah harus minimal 2 karakter.")
-    .max(100, "Nama Ayah maksimal 100 karakter.")
-    .trim(),
-  nikfather: z
-    .string()
-    .trim()
-    .length(16, "NIK harus tepat 16 digit.")
-    .regex(/^\d+$/, "NIK hanya boleh berisi angka.")
-    .or(z.literal("")), // Boleh kosong atau harus valid 16 digit
+
+  // Data Anak
+  name: z.string().min(1, "Nama wajib diisi").trim(),
+  nik: nikSchema, // ✅ Pakai helper
+  birthDate: z.date().optional(),
+  gender: z.enum(["LAKI_LAKI", "PEREMPUAN"], {
+    message: "Jenis kelamin wajib dipilih",
+  }),
+  placeOfBirth: optionalTrimmedString,
+
+  // Data Orang Tua
+  motherName: optionalTrimmedString, // ❌ Ganti jadi optional
+  nikmother: nikSchema,
+  fatherName: optionalTrimmedString, // ❌ Ganti jadi optional
+  nikfather: nikSchema,
   phoneNumber: z
     .string()
-    .max(15, "Nomor telepon maksimal 15 karakter.")
-    .optional(),
+    .trim()
+    .regex(/^[0-9+\-() ]*$/, "Format nomor tidak valid")
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v === "" ? undefined : v)),
 
-  // Alamat
+  // Data Alamat
   districtId: z.string().optional(),
-  districtName: z.string().optional(),
+  districtName: optionalTrimmedString,
   villageId: z.string().optional(),
-  villageName: z.string().optional(),
-  address: z.string().trim().optional(),
+  villageName: optionalTrimmedString,
+  address: optionalTrimmedString,
 });
 
-export const VaccineFormSchema = z.object({
-  name: z.string().min(2, "Nama vaksin harus minimal 2 karakter."),
-  description: z.string().optional(),
-});
+export const VaccineFormSchema = z
+  .object({
+    name: z.string().min(2, "Nama minimal 2 karakter").max(100).trim(),
+    description: optionalTrimmedString,
+    ageMonthMin: z.number().int().min(0, "Usia minimal harus >= 0"),
+    ageMonthMax: z.number().int().min(0).optional(),
+    totalDoses: z.number().int().min(1).max(5, "Dosis maksimal 5"),
+    intervalDays: z.number().int().min(0).optional(),
+    order: z.number().int().min(0),
+    isActive: z.boolean(),
+  })
+  .refine((data) => !data.ageMonthMax || data.ageMonthMax > data.ageMonthMin, {
+    message: "Usia maksimal harus lebih besar dari usia minimal",
+    path: ["ageMonthMax"],
+  })
+  .refine((data) => data.totalDoses <= 1 || data.intervalDays, {
+    message: "Interval wajib diisi untuk vaksin dengan dosis > 1",
+    path: ["intervalDays"],
+  });
 
 export const PosyanduFormSchema = z.object({
-  name: z.string().min(2, "Nama posyandu harus minimal 2 karakter."),
-  districtId: z.string().optional(),
-  districtName: z.string().optional(),
-  villageId: z.string().optional(),
-  villageName: z.string().optional(),
-  address: z.string().min(2, "Nama posyandu harus minimal 2 karakter."),
+  name: z.string().min(2, "Nama minimal 2 karakter").max(100).trim(),
+  address: z.string().min(1, "Alamat wajib diisi").trim(),
+  districtId: optionalTrimmedString,
+  districtName: optionalTrimmedString,
+  villageId: optionalTrimmedString,
+  villageName: optionalTrimmedString,
 });
 
-export const JadwalFormSchema = z.object({
-  posyanduId: z.string().min(1, "Posyandu harus dipilih."),
-  date: z.date().refine((date) => date >= new Date(), {
-    message: "Tanggal jadwal harus di masa depan.",
-  }),
-  notes: z.string().optional(),
+export const ScheduleFormSchema = z.object({
+  posyanduId: z.string().min(1, "Posyandu wajib dipilih"),
+  date: z.coerce.date().refine((d) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return d >= today;
+  }, "Tanggal tidak boleh di masa lalu"),
+  notes: optionalTrimmedString,
 });
-
-export type JadwalFormValues = z.infer<typeof JadwalFormSchema>;
-export type PatientFormValues = z.infer<typeof PatientformSchema>;
-export type VaccineFormValues = z.infer<typeof VaccineFormSchema>;
-export type PosyanduFormValues = z.infer<typeof PosyanduFormSchema>;
 
 export const ImmunizationFormSchema = z
   .object({
-    id: z.string().optional(),
-
-    patientId: z.string().min(1, "Pasien wajib diisi"),
-    scheduleId: z.string().min(1, "Jadwal wajib diisi"),
-
-    status: z.enum(["SERVED", "CANCELLED", "WAITING"]),
-
-    vaccines: z.array(z.string()),
-    notes: z.string().optional(),
+    patientId: z.string().min(1, "Pasien wajib dipilih"),
+    scheduleId: z.string().min(1, "Jadwal wajib dipilih"),
+    status: z.enum(["WAITING", "SERVED", "CANCELLED"]),
+    vaccines: z.array(z.string()).default([]),
+    notes: optionalTrimmedString,
   })
   .superRefine((data, ctx) => {
     if (data.status === "SERVED" && data.vaccines.length === 0) {
       ctx.addIssue({
         path: ["vaccines"],
-        message: "Minimal pilih satu vaksin",
-        code: "custom",
+        message: "Minimal satu vaksin wajib dipilih",
+        code: z.ZodIssueCode.custom,
       });
     }
-
     if (data.status === "CANCELLED" && !data.notes) {
       ctx.addIssue({
         path: ["notes"],
-        message: "Alasan wajib diisi",
-        code: "custom",
+        message: "Alasan pembatalan wajib diisi",
+        code: z.ZodIssueCode.custom,
       });
     }
   });
 
+// ==================== TYPES ====================
+
+export type PatientFormInput = z.input<typeof PatientFormSchema>;
+export type PosyanduFormInput = z.input<typeof PosyanduFormSchema>;
+export type VaccineFormInput = z.input<typeof VaccineFormSchema>;
+export type ImmunizationFormInput = z.input<typeof ImmunizationFormSchema>;
+
+export type PatientFormValues = z.infer<typeof PatientFormSchema>;
+export type VaccineFormValues = z.infer<typeof VaccineFormSchema>;
+export type PosyanduFormValues = z.infer<typeof PosyanduFormSchema>;
+export type ScheduleFormValues = z.infer<typeof ScheduleFormSchema>;
 export type ImmunizationFormValues = z.infer<typeof ImmunizationFormSchema>;

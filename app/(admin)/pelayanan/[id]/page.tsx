@@ -1,10 +1,10 @@
-import {
-  getPatientVaccineHistory,
-  getScheduleSummary,
-} from "@/app/actions/pelayanan";
+import { getVaccines } from "@/app/actions/vaccines";
 import { ScheduleHeader } from "@/components/scheduleHeader";
 import Pelayanan from "./clients/Pelayanan";
-import { getVaccines } from "@/app/actions/vaccines";
+import {
+  getCandidatePatients,
+  getScheduleSummary,
+} from "@/app/actions/pelayanan";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -12,27 +12,26 @@ type PageProps = {
 
 export default async function DetailPelayanan({ params }: PageProps) {
   const { id } = await params;
-  const data = await getScheduleSummary(id);
-  const vaccines = await getVaccines();
-  const patient = data.patients.length > 0 ? data.patients[0] : null;
-  const patientId = patient ? patient.id : "";
-  const vaccineHistory = await getPatientVaccineHistory(patientId);
+
+  const [summary, vaccines, candidates] = await Promise.all([
+    getScheduleSummary(id),
+    getVaccines(),
+    getCandidatePatients(id),
+  ]);
 
   return (
     <div className="space-y-6">
       <ScheduleHeader
-        posyanduName={data.schedule.posyandu.name}
-        date={data.schedule.date}
-        totalTarget={data.totalTarget}
-        served={data.served}
-        notServed={data.notServed}
-        cancelled={data.cancelled}
+        posyanduName={summary.schedule.posyandu.name}
+        date={summary.schedule.date}
+        stats={summary.stats}
       />
 
       <Pelayanan
-        data={data}
+        scheduleId={id}
+        summary={summary}
         vaccines={vaccines}
-        vaccineHistory={vaccineHistory}
+        candidates={candidates}
       />
     </div>
   );

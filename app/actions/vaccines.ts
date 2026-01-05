@@ -1,99 +1,140 @@
 "use server";
 
-import { VaccineProps } from "@/hooks/use-vaccines";
-import { requireAdmin } from "@/lib/auth-utils";
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/db";
+import { requireAdmin } from "@/lib/auth-utils";
+import { VaccineFormSchema } from "@/lib/zod";
+import { Prisma, type Vaccine } from "@/lib/generated/prisma/client";
 
-export const getVaccines = async () => {
-  try {
-    const session = await requireAdmin();
+// ==================== QUERIES ====================
 
-    if (!session) {
-      throw new Error("Unauthorized");
-    }
+export async function getVaccines(): Promise<Vaccine[]> {
+  await requireAdmin();
 
-    const res = await prisma.vaccine.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-
-    return res;
-  } catch (error) {
-    console.error("Error fetching vaccines:", error);
-    throw new Error("Failed to fetch vaccines");
-  }
-};
-
-export const createVaccine = async (name: string, description: string) => {
-  try {
-    const session = await requireAdmin();
-
-    if (!session) {
-      return {
-        success: false,
-        error: "Unauthorized",
-      };
-    }
-    const res = await prisma.vaccine.create({
-      data: {
-        name,
-        description,
+  return await prisma.vaccine.findMany({
+    orderBy: { order: "asc" }, // ✅ Sort by order, bukan createdAt
+    where: { isActive: true }, // ✅ Only active vaccines
+    include: {
+      _count: {
+        select: { vaccineHistories: true },
       },
-    });
+    },
+  });
+}
 
-    return res;
-  } catch (error) {
-    console.error("Error creating vaccine:", error);
-    return {
-      success: false,
-      error: "Failed to create vaccine",
-    };
-  }
-};
+export async function getVaccine(id: string): Promise<Vaccine | null> {
+  await requireAdmin();
 
-export const updateVaccine = async (vaccine: VaccineProps) => {
-  try {
-    const session = await requireAdmin();
-
-    if (!session) {
-      throw new Error("Unauthorized");
-    }
-
-    const res = await prisma.vaccine.update({
-      where: { id: vaccine.id },
-      data: {
-        name: vaccine.name,
-        description: vaccine.description,
+  return await prisma.vaccine.findUnique({
+    where: { id },
+    include: {
+      vaccineHistories: {
+        take: 10,
+        orderBy: { givenAt: "desc" },
       },
+    },
+  });
+}
+
+// ==================== MUTATIONS ====================
+
+export async function createVaccine(input: unknown) {
+  await requireAdmin();
+  const data = VaccineFormSchema.parse(input);
+
+  try {
+    const vaccine = await prisma.vaccine.create({
+      data,
     });
 
-    return res;
+    revalidatePath("/dashboard/vaksin");
+    return vaccine;
   } catch (error) {
-    console.error("Error updating vaccine:", error);
-    return {
-      success: false,
-      error: "Failed to update vaccine",
-    };
-  }
-};
-
-export const removeVaccine = async (id: string) => {
-  try {
-    const session = await requireAdmin();
-
-    if (!session) {
-      throw new Error("Unauthorized");
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new Error("Nama vaksin sudah terdaftar");
     }
+    throw new Error("Gagal membuat vaksin");
+  }
+}
 
-    const res = await prisma.vaccine.delete({
+export async function updateVaccine(id: string, input: unknown) {
+  await requireAdmin();
+  const data = VaccineFormSchema.parse(input);
+
+  try {
+    const vaccine = await prisma.vaccine.update({
       where: { id },
+      data,
     });
 
-    return res;
+    revalidatePath("/dashboard/vaksin");
+    revalidatePath(`/dashboard/vaksin/${id}`);
+    return vaccine;
   } catch (error) {
-    console.error("Error deleting vaccine:", error);
-    return {
-      success: false,
-      error: "Failed to delete vaccine",
-    };
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new Error("Nama vaksin sudah digunakan");
+    }
+    throw new Error("Gagal memperbarui vaksin");
   }
-};
+}
+
+export async function deleteVaccine(id: string) {
+  await requireAdmin();
+
+  // ✅ Check if vaccine has history
+  const hasHistory = await prisma.vaccineHistory.count({
+    where: { vaccineId: id },
+  });
+
+  if (hasHistory > 0) {
+    throw new Error("Vaksin tidak dapat dihapus karena sudah digunakan");
+  }
+
+  await prisma.vaccine.delete({
+    where: { id },
+  });
+
+  revalidatePath("/dashboard/vaksin");
+}
+
+export async function toggleVaccineStatus(id: string) {
+  await requireAdmin();
+
+  const vaccine = await prisma.vaccine.findUnique({
+    where: { id },
+    select: { isActive: true },
+  });
+
+  if (!vaccine) {
+    throw new Error("Vaksin tidak ditemukan");
+  }
+
+  const updated = await prisma.vaccine.update({
+    where: { id },
+    data: { isActive: !vaccine.isActive },
+  });
+
+  revalidatePath("/dashboard/vaksin");
+  return updated;
+}
+
+export async function searchVaccines(query: string) {
+  await requireAdmin();
+
+  return await prisma.vaccine.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        { name: { contains: query, mode: "insensitive" } },
+        { description: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    take: 10,
+  });
+}

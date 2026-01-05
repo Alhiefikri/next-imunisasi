@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 import { columns } from "./clients/columns";
-import { getAllPatiens } from "@/app/actions/patiens";
+import { getPatients } from "@/app/actions/patiens";
 
 export default async function PasienPage() {
-  const data = await getAllPatiens();
+  const data = await getPatients();
 
   return (
     <>

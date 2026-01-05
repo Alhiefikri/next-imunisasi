@@ -13,11 +13,12 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==================== AUTH ====================
+
 enum Role {
   USER
   ADMIN
 }
-
 
 model User {
   id            String    @id
@@ -28,6 +29,7 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
   sessions      Session[]
   accounts      Account[]
   patients      Patient[]
@@ -84,135 +86,194 @@ model Verification {
   @@map("verification")
 }
 
-// Imunisasi Schema
+// ==================== IMUNISASI ====================
 
 enum Gender {
   LAKI_LAKI
   PEREMPUAN
 }
 
-
 model Patient {
   id            String   @id @default(cuid())
+  
   // Data Anak
   name          String
   birthDate     DateTime
   gender        Gender
-  placeOfBirth  String?       
+  placeOfBirth  String?
+  nik           String? 
+  
   // Data Orang Tua/Wali
-  motherName    String? 
+  motherName    String?
   fatherName    String?
-  nikmother     String? @unique
-  nikfather     String? @unique
+  nikmother     String?  
+  nikfather     String? 
   phoneNumber   String?
+  
   // Data Alamat
   districtId    String?
   districtName  String?
   villageId     String?
   villageName   String?
-  address       String? @db.Text
+  address       String?  @db.Text
+  
+  // System
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Data Pendukung Lainnya
-  nik           String?  @unique
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  isActive Boolean @default(true)
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  
+  // ⭐ Relations
   immunizationRecords ImmunizationRecord[]
+  vaccineHistories    VaccineHistory[]      // ⭐ NEW: Direct relation ke vaccine history
 
   @@index([name])
+  @@index([nik])
+  @@index([nikmother])
+  @@index([nikfather])
   @@index([motherName, fatherName])
   @@index([phoneNumber])
   @@index([districtId, villageId])
 }
 
 model Vaccine {
-  id          String     @id @default(cuid())
-  name        String     @unique
-  description String?   @db.Text
-
-  records ImmunizationRecord[]
-
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?  @db.Text
   
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  // ⭐ NEW: Vaccine details
+  ageMonthMin Int      @default(0)         // Usia minimal (bulan)
+  ageMonthMax Int?                         // Usia maksimal (bulan), null = no limit
+  totalDoses  Int      @default(1)         // Jumlah dosis (1-5)
+  intervalDays Int?                        // Interval antar dosis (hari)
+  order       Int      @default(0)         // Urutan tampil di form
+  isActive    Boolean  @default(true)      // Aktif/nonaktif
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // ⭐ Relations
+  vaccineHistories VaccineHistory[]        // ⭐ NEW: Track history per vaksin
+  
+  @@index([order])
+  @@index([isActive])
 }
 
-// Master Data Lokasi Posyandu
 model Posyandu {
-  id          String     @id @default(cuid())
-  name        String
-  address     String @db.Text
+  id           String     @id @default(cuid())
+  name         String
+  address      String     @db.Text
+  
   // Data Alamat
-  districtId    String?
-  districtName  String?
-  villageId     String?
-  villageName   String?
-
-  schedules   Schedule[]
-
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  districtId   String?
+  districtName String?
+  villageId    String?
+  villageName  String?
+  
+  schedules    Schedule[]
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 enum ScheduleStatus {
-  UPCOMING
-  ONGOING
-  COMPLETED
-  CANCELLED
+  UPCOMING   // Belum dimulai
+  ONGOING    // Sedang berlangsung
+  COMPLETED  // Selesai (auto-lock vaccine histories)
+  CANCELLED  // Dibatalkan
 }
 
-// Model Jadwal (Penghubung)
 model Schedule {
-  id           String   @id @default(cuid())
+  id           String         @id @default(cuid())
   date         DateTime
-  status       ScheduleStatus @default(UPCOMING) // UPCOMING, ONGOING, COMPLETED, CANCELLED
+  status       ScheduleStatus @default(UPCOMING)
   
   posyanduId   String
-  posyandu     Posyandu @relation(fields: [posyanduId], references: [id], onDelete: Cascade)
-  notes        String? @db.Text
-
-  records     ImmunizationRecord[]
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([date])
-}
-
-enum AttendanceStatus{
- WAITING
- SERVED
- CANCELLED
-}
-
-model ImmunizationRecord{
-  id          String   @id @default(cuid())
-
-  patientId   String
-  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  status     AttendanceStatus @default(WAITING) // WAITING, SERVED, CANCELLED
+  posyandu     Posyandu       @relation(fields: [posyanduId], references: [id], onDelete: Cascade)
   
-  vaccines Vaccine[]
+  notes        String?        @db.Text
+  
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  // ⭐ Relations
+  immunizationRecords ImmunizationRecord[]
+  vaccineHistories    VaccineHistory[]     // ⭐ NEW: Track vaccines per schedule
+  
+  @@index([date])
+  @@index([status])
+}
 
+enum AttendanceStatus {
+  WAITING   // Menunggu antrian
+  SERVED    // Sudah dilayani
+  CANCELLED // Dibatalkan (sakit, dll)
+}
+
+model ImmunizationRecord {
+  id          String           @id @default(cuid())
+  
+  patientId   String
+  patient     Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
   scheduleId  String
-  schedule    Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  schedule    Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  
+  status      AttendanceStatus @default(WAITING)
+  notes       String?          @db.Text  // Catatan (untuk CANCELLED: alasan batal)
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
-
-
-  notes          String? @db.Text
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@unique([patientId, scheduleId]) 
-
+  // 👇 CHANGE 2: Relation ke VaccineHistory
+  // Supaya kalau check-in (Record) dihapus, data suntikan (History) ikut kehapus.
+  vaccineHistories VaccineHistory[]
+  
+  // ⭐ REMOVED: vaccines Vaccine[] (diganti VaccineHistory)
+  
+  @@unique([patientId, scheduleId])
   @@index([patientId, scheduleId])
   @@index([status])
 }
 
+// ⭐ NEW: Junction Table dengan Locking Mechanism
+model VaccineHistory {
+  id          String   @id @default(cuid())
+  administeredBy String?
+  
+  // Relations
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  vaccineId   String
+  vaccine     Vaccine  @relation(fields: [vaccineId], references: [id], onDelete: Restrict)
+  
+  scheduleId  String
+  schedule    Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  // Ini menghubungkan "Tindakan" ke "Kunjungan" yang spesifik.
+  immunizationRecordId String
+  immunizationRecord   ImmunizationRecord @relation(fields: [immunizationRecordId], references: [id], onDelete: Cascade)
+  
+  // Data
+  givenAt     DateTime @default(now())  // Kapan vaksin diberikan
+  doseNumber  Int      @default(1)      // Dosis ke-berapa (1, 2, 3, dst)
+  notes       String?  @db.Text         // Catatan per vaksin
+  
+  // ⭐ Locking mechanism
+  isLocked    Boolean  @default(false)  // Auto true saat schedule COMPLETED
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([patientId, vaccineId, doseNumber])  // Prevent duplicate
+  @@index([patientId])
+  @@index([scheduleId])
+  @@index([vaccineId])
+  @@index([isLocked])
+}
 
 

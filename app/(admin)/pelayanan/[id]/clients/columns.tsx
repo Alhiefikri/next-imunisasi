@@ -1,95 +1,157 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { cn, getAgeDetails } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge"; // Pastikan sudah install badge shadcn
-import { User, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  User,
+  Calendar,
+  Syringe,
+  CheckCircle2,
+  Clock,
+  XCircle,
+} from "lucide-react";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
-export type PatientRow = {
+type PatientWithStatus = {
   id: string;
   name: string;
   birthDate: string;
-  gender: "LAKI_LAKI" | "PEREMPUAN";
-  motherName: string;
+  gender: string;
+  motherName: string | null;
+  nik: string | null;
   status: "WAITING" | "SERVED" | "CANCELLED";
+  recordId?: string;
+  vaccineCount?: number;
 };
 
-export const columns: ColumnDef<PatientRow>[] = [
+const statusConfig = {
+  WAITING: {
+    label: "Menunggu",
+    icon: Clock,
+    variant: "secondary" as const,
+    color: "text-amber-600",
+  },
+  SERVED: {
+    label: "Selesai",
+    icon: CheckCircle2,
+    variant: "default" as const,
+    color: "text-emerald-600",
+  },
+  CANCELLED: {
+    label: "Batal",
+    icon: XCircle,
+    variant: "destructive" as const,
+    color: "text-rose-600",
+  },
+};
+
+export const columns: ColumnDef<PatientWithStatus>[] = [
   {
     accessorKey: "name",
-    header: "Informasi Anak",
+    header: "Nama Pasien",
     cell: ({ row }) => {
-      const gender = row.original.gender;
+      const status = row.original.status;
+      const config = statusConfig[status];
+      const Icon = config.icon;
+
       return (
-        <div className="flex flex-col gap-1 py-1">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-900 leading-none">
-              {row.original.name}
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+              status === "SERVED"
+                ? "bg-emerald-50"
+                : status === "CANCELLED"
+                ? "bg-rose-50"
+                : "bg-amber-50"
+            )}
+          >
+            <Icon className={cn("h-5 w-5", config.color)} />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-sm">
+              {row.getValue("name")}
             </span>
-            <span
-              className={cn(
-                "px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider",
-                gender === "LAKI_LAKI"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-pink-100 text-pink-700"
-              )}
-            >
-              {gender === "LAKI_LAKI" ? "L" : "P"}
+            <span className="text-xs text-muted-foreground">
+              {row.original.nik || "NIK belum tercatat"}
             </span>
           </div>
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            {getAgeDetails(new Date(row.original.birthDate))}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "birthDate",
+    header: "Tanggal Lahir",
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("birthDate"));
+      const age = Math.floor(
+        (new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24 * 30)
+      );
+
+      return (
+        <div className="flex items-center gap-2 text-sm">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col">
+            <span>{format(date, "dd MMM yyyy", { locale: idLocale })}</span>
+            <span className="text-xs text-muted-foreground">{age} bulan</span>
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "gender",
+    header: "JK",
+    cell: ({ row }) => (
+      <span className="text-sm">
+        {row.getValue("gender") === "LAKI_LAKI" ? "L" : "P"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "motherName",
+    header: "Nama Ibu",
+    cell: ({ row }) => {
+      const motherName = row.getValue("motherName") as string | null;
+      return (
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">{motherName || "-"}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "vaccineCount",
+    header: "Vaksin",
+    cell: ({ row }) => {
+      const count = row.original.vaccineCount ?? 0;
+      return (
+        <div className="flex items-center gap-2">
+          <Syringe className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">
+            {count > 0 ? `${count}x` : "-"}
           </span>
         </div>
       );
     },
   },
-
-  {
-    accessorKey: "motherName",
-    header: "Orang Tua / Wali",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2 text-slate-600">
-        <Users className="w-3.5 h-3.5 opacity-50" />
-        <span className="text-sm font-medium">{row.original.motherName}</span>
-      </div>
-    ),
-  },
-
   {
     accessorKey: "status",
-    header: "Status Antrean",
+    header: "Status",
     cell: ({ row }) => {
-      const status = row.original.status;
-
-      const config = {
-        WAITING: {
-          label: "Menunggu",
-          class: "bg-amber-50 text-amber-700 border-amber-200",
-        },
-        SERVED: {
-          label: "Selesai",
-          class: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        },
-        CANCELLED: {
-          label: "Batal / Tidak Layak",
-          class: "bg-red-50 text-red-700 border-red-200",
-        },
-      };
-
-      const current = config[status];
+      const status = row.getValue("status") as keyof typeof statusConfig;
+      const config = statusConfig[status];
+      const Icon = config.icon;
 
       return (
-        <div className="flex justify-start">
-          <div
-            className={cn(
-              "px-2.5 py-1 rounded-full text-[11px] font-bold border",
-              current.class
-            )}
-          >
-            {current.label}
-          </div>
-        </div>
+        <Badge variant={config.variant} className="gap-1">
+          <Icon className="h-3 w-3" />
+          {config.label}
+        </Badge>
       );
     },
   },

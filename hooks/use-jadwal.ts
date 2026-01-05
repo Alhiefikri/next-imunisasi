@@ -5,23 +5,30 @@ export interface JadwalProps {
   posyanduId: string;
   date: Date;
   notes?: string;
-  status: string;
+  status: "UPCOMING" | "ONGOING" | "COMPLETED" | "CANCELLED";
   posyandu?: {
+    id: string;
     name: string;
-    villageName: string;
+    address: string;
+    districtName?: string;
+    villageName?: string;
+  };
+  _count?: {
+    immunizationRecords: number;
+    vaccineHistories: number;
   };
 }
 
 interface JadwalModalProps {
-  jadwal: JadwalProps | undefined;
-  setJadwal: (jadwal: JadwalProps) => void;
+  jadwal: JadwalProps | null;
+  setJadwal: (jadwal: JadwalProps | null) => void;
   open: boolean;
   setOpen: (open: boolean) => void;
 }
 
 export const useJadwal = create<JadwalModalProps>((set) => ({
   open: false,
-  setOpen: (open: boolean) => set({ open }),
-  jadwal: undefined,
-  setJadwal: (jadwal: JadwalProps) => set({ jadwal }),
+  setOpen: (open) => set({ open }),
+  jadwal: null,
+  setJadwal: (jadwal) => set({ jadwal }),
 }));
