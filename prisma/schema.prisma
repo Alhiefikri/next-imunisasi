@@ -121,6 +121,9 @@ model Patient {
   userId        String?
   user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  posyanduId     String?
+  posyandu       Posyandu? @relation("HomePosyandu", fields: [posyanduId], references: [id])
+
   isActive Boolean @default(true)
   
   createdAt     DateTime @default(now())
@@ -173,7 +176,9 @@ model Posyandu {
   villageId    String?
   villageName  String?
   
+  HomePatients     Patient[] @relation("HomePosyandu")
   schedules    Schedule[]
+
   
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt

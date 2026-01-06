@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, getAgeDetails } from "@/lib/utils";
 
 type PatientWithStatus = {
   id: string;
@@ -87,16 +87,15 @@ export const columns: ColumnDef<PatientWithStatus>[] = [
     header: "Tanggal Lahir",
     cell: ({ row }) => {
       const date = new Date(row.getValue("birthDate"));
-      const age = Math.floor(
-        (new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24 * 30)
-      );
 
       return (
         <div className="flex items-center gap-2 text-sm">
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <div className="flex flex-col">
             <span>{format(date, "dd MMM yyyy", { locale: idLocale })}</span>
-            <span className="text-xs text-muted-foreground">{age} bulan</span>
+            <span className="text-xs text-muted-foreground">
+              {getAgeDetails(date)}
+            </span>
           </div>
         </div>
       );
