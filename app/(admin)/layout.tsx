@@ -2,16 +2,21 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator"; // Opsional: untuk garis pemisah
 import React from "react";
+import { AuthSession } from "@/lib/auth-utils";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await AuthSession();
   return (
     <SidebarProvider>
       {/* 1. Sidebar Komponen */}
-      <AppSidebar />
+      <AppSidebar
+        userName={session?.user.name}
+        userImage={session?.user.image}
+      />
 
       {/* 2. Main Content Area */}
       <main className="relative flex min-h-svh flex-1 flex-col bg-background">

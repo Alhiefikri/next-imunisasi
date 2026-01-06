@@ -130,7 +130,13 @@ function AppLogo() {
   );
 }
 
-function UserProfileDropdown() {
+function UserProfileDropdown({
+  userName,
+  userImage,
+}: {
+  userName: string;
+  userImage: string;
+}) {
   const { isMobile } = useSidebar();
 
   return (
@@ -140,12 +146,12 @@ function UserProfileDropdown() {
           variant="ghost"
           className="relative h-12 w-full justify-start gap-2 px-2 hover:bg-sidebar-accent"
         >
-          <Avatar className="h-8 w-8 rounded-lg">
-            <AvatarImage src="https://github.com/shadcn.png" alt="Admin" />
+          <Avatar className="h-10 w-10 rounded-lg">
+            <AvatarImage src={userImage} alt={userName} />
             <AvatarFallback>AD</AvatarFallback>
           </Avatar>
           <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate font-semibold">Admin Posyandu</span>
+            <span className="truncate font-semibold">{userName}</span>
             <span className="truncate text-xs text-muted-foreground">
               admin@posyandu.id
             </span>
@@ -163,11 +169,11 @@ function UserProfileDropdown() {
         <DropdownMenuLabel className="p-0 font-normal">
           <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage src="https://github.com/shadcn.png" alt="Admin" />
+              <AvatarImage src={userImage} alt={userName} />
               <AvatarFallback>AD</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">Admin Posyandu</span>
+              <span className="truncate font-semibold">{userName}</span>
               <span className="truncate text-xs">admin@posyandu.id</span>
             </div>
           </div>
@@ -193,7 +199,13 @@ function UserProfileDropdown() {
 
 // --- Main Component ---
 
-export function AppSidebar() {
+export function AppSidebar({
+  userName = "admin",
+  userImage = "",
+}: {
+  userName?: string;
+  userImage?: string;
+}) {
   const pathname = usePathname();
 
   return (
@@ -253,7 +265,7 @@ export function AppSidebar() {
 
       {/* FOOTER: User Profile */}
       <SidebarFooter className="border-t p-2">
-        <UserProfileDropdown />
+        <UserProfileDropdown userName={userName!} userImage={userImage!} />
       </SidebarFooter>
     </Sidebar>
   );
