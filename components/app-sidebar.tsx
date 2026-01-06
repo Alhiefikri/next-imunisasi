@@ -48,59 +48,65 @@ type MenuGroup = {
 // Konfigurasi Menu Terpusat (Data-Driven)
 const MENU_GROUPS: MenuGroup[] = [
   {
-    label: "Menu Utama",
+    label: "Pelayanan Lapangan", // Fokus pada kegiatan harian
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: LucideIcons.Home },
-      { title: "Data Anak", url: "/pasien", icon: LucideIcons.Baby },
       {
-        title: "Jadwal Imunisasi",
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LucideIcons.LayoutDashboard,
+      },
+      {
+        title: "Jadwal Hari Ini",
         url: "/jadwal-imunisasi",
-        icon: LucideIcons.Calendar,
+        icon: LucideIcons.CalendarClock,
         badge: "3",
       },
-      {
-        title: "Riwayat Imunisasi",
-        url: "/riwayat-imunisasi",
-        icon: LucideIcons.Syringe,
-      },
+
+      { title: "Data Anak", url: "/pasien", icon: LucideIcons.Baby },
     ],
   },
   {
-    label: "Manajemen Data",
+    label: "Logistik & SDM",
     items: [
       {
-        title: "Jenis Vaksin",
-        url: "/jenis-vaksin",
-        icon: LucideIcons.HeartPulse,
-      },
-      {
         title: "Stok Vaksin",
-        url: "/stok-vaksin",
+        url: "/jenis-vaksin",
         icon: LucideIcons.Package,
         badge: "Low",
         badgeVariant: "destructive",
       },
-      { title: "Data Orang Tua", url: "/orang-tua", icon: LucideIcons.Users },
-      { title: "Posyandu", url: "/posyandu", icon: LucideIcons.Building2 },
-      { title: "Petugas", url: "/petugas", icon: LucideIcons.UserCog },
+      { title: "Petugas & Kader", url: "/petugas", icon: LucideIcons.UserCog },
+      { title: "Posyandu/Wilayah", url: "/posyandu", icon: LucideIcons.MapPin },
     ],
   },
   {
-    label: "Laporan & Analisis",
+    label: "Pusat Data",
     items: [
-      { title: "Laporan", url: "/laporan", icon: LucideIcons.FileText },
-      { title: "Statistik", url: "/statistik", icon: LucideIcons.BarChart3 },
+      {
+        title: "Riwayat Global",
+        url: "/riwayat-imunisasi",
+        icon: LucideIcons.History,
+      },
+      {
+        title: "Jenis Vaksin",
+        url: "/jenis-vaksin",
+        icon: LucideIcons.Microscope,
+      },
+      {
+        title: "Laporan Bulanan",
+        url: "/laporan",
+        icon: LucideIcons.FileSpreadsheet,
+      },
     ],
   },
   {
     label: "Sistem",
     items: [
       {
-        title: "Notifikasi",
+        title: "Broadcast WA",
         url: "/notifikasi",
-        icon: LucideIcons.Bell,
-        badge: "5",
-        badgeVariant: "destructive",
+        icon: LucideIcons.MessageSquareText,
+        badge: "Auto",
       },
       { title: "Pengaturan", url: "/pengaturan", icon: LucideIcons.Settings },
     ],

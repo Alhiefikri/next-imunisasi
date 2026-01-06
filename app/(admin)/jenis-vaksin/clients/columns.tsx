@@ -128,43 +128,7 @@ export const columns: ColumnDef<Vaccine>[] = [
       );
     },
   },
-  {
-    accessorKey: "isActive",
-    header: "Status",
-    cell: ({ row }) => {
-      const isActive = row.getValue("isActive") as boolean;
-      return (
-        <Badge variant={isActive ? "default" : "secondary"}>
-          {isActive ? (
-            <>
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              Aktif
-            </>
-          ) : (
-            <>
-              <XCircle className="h-3 w-3 mr-1" />
-              Nonaktif
-            </>
-          )}
-        </Badge>
-      );
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    },
-  },
-  {
-    accessorKey: "createdAt",
-    header: "Dibuat",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-        <Calendar className="h-4 w-4" />
-        {format(new Date(row.original.createdAt), "dd MMM yyyy", {
-          locale: id,
-        })}
-      </div>
-    ),
-  },
+
   {
     id: "actions",
     header: () => <div className="text-right">Aksi</div>,
